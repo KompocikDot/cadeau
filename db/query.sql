@@ -10,8 +10,17 @@ SELECT * FROM users WHERE id = ?;
 -- name: CreateOccasion :exec
 INSERT INTO occasions(name, gift_receiver) values(?, ?);
 
--- name: GetOccasionByUserId :many
+-- name: GetUserOccasionsByUserId :many
 SELECT * FROM occasions WHERE gift_receiver = ?;
+
+-- name: GetOccasionById :one
+SELECT * FROM occasions WHERE id = ? AND gift_receiver = ?;
 
 -- name: DeleteOccasion :exec
 DELETE FROM occasions WHERE id = ?;
+
+-- name: CreateGift :exec
+INSERT INTO gifts(name, url, occasion) values(?, ?, ?);
+
+-- name: DeleteGift :exec
+DELETE FROM gifts WHERE id = ?;

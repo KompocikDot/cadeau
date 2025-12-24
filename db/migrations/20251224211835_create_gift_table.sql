@@ -1,0 +1,10 @@
+-- migrate:up
+CREATE TABLE IF NOT EXISTS gifts(
+	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	name VARCHAR NOT NULL,
+	url VARCHAR NOT NULL,
+	occasion INTEGER NOT NULL REFERENCES occasions(id)
+);
+
+-- migrate:down
+DROP TABLE IF EXISTS gifts;

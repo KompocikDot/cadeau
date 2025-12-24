@@ -9,6 +9,21 @@ import (
 	"context"
 )
 
+const createGift = `-- name: CreateGift :exec
+INSERT INTO gifts(name, url, occasion) values(?, ?, ?)
+`
+
+type CreateGiftParams struct {
+	Name     string
+	Url      string
+	Occasion int64
+}
+
+func (q *Queries) CreateGift(ctx context.Context, arg CreateGiftParams) error {
+	_, err := q.db.ExecContext(ctx, createGift, arg.Name, arg.Url, arg.Occasion)
+	return err
+}
+
 const createOccasion = `-- name: CreateOccasion :exec
 INSERT INTO occasions(name, gift_receiver) values(?, ?)
 `
@@ -37,6 +52,15 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
 	return err
 }
 
+const deleteGift = `-- name: DeleteGift :exec
+DELETE FROM gifts WHERE id = ?
+`
+
+func (q *Queries) DeleteGift(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, deleteGift, id)
+	return err
+}
+
 const deleteOccasion = `-- name: DeleteOccasion :exec
 DELETE FROM occasions WHERE id = ?
 `
@@ -46,31 +70,20 @@ func (q *Queries) DeleteOccasion(ctx context.Context, id int64) error {
 	return err
 }
 
-const getOccasionByUserId = `-- name: GetOccasionByUserId :many
-SELECT id, name, gift_receiver FROM occasions WHERE gift_receiver = ?
+const getOccasionById = `-- name: GetOccasionById :one
+SELECT id, name, gift_receiver FROM occasions WHERE id = ? AND gift_receiver = ?
 `
 
-func (q *Queries) GetOccasionByUserId(ctx context.Context, giftReceiver int64) ([]Occasion, error) {
-	rows, err := q.db.QueryContext(ctx, getOccasionByUserId, giftReceiver)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []Occasion
-	for rows.Next() {
-		var i Occasion
-		if err := rows.Scan(&i.ID, &i.Name, &i.GiftReceiver); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
+type GetOccasionByIdParams struct {
+	ID           int64
+	GiftReceiver int64
+}
+
+func (q *Queries) GetOccasionById(ctx context.Context, arg GetOccasionByIdParams) (Occasion, error) {
+	row := q.db.QueryRowContext(ctx, getOccasionById, arg.ID, arg.GiftReceiver)
+	var i Occasion
+	err := row.Scan(&i.ID, &i.Name, &i.GiftReceiver)
+	return i, err
 }
 
 const getUserById = `-- name: GetUserById :one
@@ -93,4 +106,31 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 	var i User
 	err := row.Scan(&i.ID, &i.Username, &i.Password)
 	return i, err
+}
+
+const getUserOccasionsByUserId = `-- name: GetUserOccasionsByUserId :many
+SELECT id, name, gift_receiver FROM occasions WHERE gift_receiver = ?
+`
+
+func (q *Queries) GetUserOccasionsByUserId(ctx context.Context, giftReceiver int64) ([]Occasion, error) {
+	rows, err := q.db.QueryContext(ctx, getUserOccasionsByUserId, giftReceiver)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Occasion
+	for rows.Next() {
+		var i Occasion
+		if err := rows.Scan(&i.ID, &i.Name, &i.GiftReceiver); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
