@@ -9,6 +9,20 @@ import (
 	"context"
 )
 
+const createOccasion = `-- name: CreateOccasion :exec
+INSERT INTO occasions(name, gift_receiver) values(?, ?)
+`
+
+type CreateOccasionParams struct {
+	Name         string
+	GiftReceiver int64
+}
+
+func (q *Queries) CreateOccasion(ctx context.Context, arg CreateOccasionParams) error {
+	_, err := q.db.ExecContext(ctx, createOccasion, arg.Name, arg.GiftReceiver)
+	return err
+}
+
 const createUser = `-- name: CreateUser :exec
 INSERT INTO users(username, password) values(?, ?)
 `
@@ -23,12 +37,59 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
 	return err
 }
 
-const getUser = `-- name: GetUser :one
+const deleteOccasion = `-- name: DeleteOccasion :exec
+DELETE FROM occasions WHERE id = ?
+`
+
+func (q *Queries) DeleteOccasion(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, deleteOccasion, id)
+	return err
+}
+
+const getOccasionByUserId = `-- name: GetOccasionByUserId :many
+SELECT id, name, gift_receiver FROM occasions WHERE gift_receiver = ?
+`
+
+func (q *Queries) GetOccasionByUserId(ctx context.Context, giftReceiver int64) ([]Occasion, error) {
+	rows, err := q.db.QueryContext(ctx, getOccasionByUserId, giftReceiver)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Occasion
+	for rows.Next() {
+		var i Occasion
+		if err := rows.Scan(&i.ID, &i.Name, &i.GiftReceiver); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getUserById = `-- name: GetUserById :one
+SELECT id, username, password FROM users WHERE id = ?
+`
+
+func (q *Queries) GetUserById(ctx context.Context, id int64) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserById, id)
+	var i User
+	err := row.Scan(&i.ID, &i.Username, &i.Password)
+	return i, err
+}
+
+const getUserByUsername = `-- name: GetUserByUsername :one
 SELECT id, username, password FROM users WHERE username = ?
 `
 
-func (q *Queries) GetUser(ctx context.Context, username string) (User, error) {
-	row := q.db.QueryRowContext(ctx, getUser, username)
+func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserByUsername, username)
 	var i User
 	err := row.Scan(&i.ID, &i.Username, &i.Password)
 	return i, err

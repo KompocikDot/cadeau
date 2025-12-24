@@ -4,6 +4,12 @@
 
 package db
 
+type Occasion struct {
+	ID           int64
+	Name         string
+	GiftReceiver int64
+}
+
 type User struct {
 	ID       int64
 	Username string

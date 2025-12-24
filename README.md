@@ -9,11 +9,11 @@ Defining the foundation and initializing the Go module.
   - [ ] Plan Relationships: Foreign keys for SQLite (e.g., `user_id` in items table).
 - [ ] **Repository Initialization**
   - [X] `git init`.
-  - [ ] Create `.gitignore`:
+  - [X] Create `.gitignore`:
     - [ ] Add `main` (binary).
     - [X] Add `*.db`, `*.db-journal`, `*.sqlite`.
     - [ ] Add `node_modules`, `.env`, `.output`, `dist`.
-- [ ] **Tooling Setup**
+- [X] **Tooling Setup**
   - [X] Install **sqlc**: `brew install sqlc` (or go install).
   - [X] Install **dbmate** (CLI) only for generating files: `brew install dbmate`.
   - [X] Initialize Go Module: `go mod init <module-name>`.
@@ -36,7 +36,7 @@ Setting up the programmatic migration runner and SQLC.
   - [X] Configure `dbmate.New` pointing to your SQLite file URL.
   - [X] Execute `dbmate.Migrate()` on application startup.
   - [X] Handle errors: If migration fails, the app should panic/exit.
-- [ ] **First Migration**:
+- [X] **First Migration**:
   - [X] Run `dbmate new init_schema` (creates files in `db/migrations`).
   - [X] Write SQL DDL (CREATE TABLE Users...).
   - [X] Run `go run main.go` to verify the app applies the migration automatically.

@@ -27,6 +27,11 @@ type UserRegister struct {
 	Password string `json:"password"`
 }
 
+type CreateOccasion struct {
+	Name         string `json:"name"`
+	GiftReceiver int64  `json:"giftReceiver"`
+}
+
 func main() {
 	app := fiber.New(fiber.Config{
 		CaseSensitive: true,
@@ -48,10 +53,6 @@ func main() {
 	}
 
 	dbC := db.New(conn)
-
-	app.Get("/", func(c fiber.Ctx) error {
-		return c.SendString("Hello, World!")
-	})
 
 	app.Post("/auth/register", func(c fiber.Ctx) error {
 		p := new(UserRegister)
@@ -79,7 +80,7 @@ func main() {
 			return err
 		}
 
-		u, err := dbC.GetUser(c.Context(), p.Username)
+		u, err := dbC.GetUserByUsername(c.Context(), p.Username)
 		if err != nil {
 			return err
 		}
@@ -89,6 +90,38 @@ func main() {
 		}
 
 		return nil
+	})
+
+	app.Post("/occasions", func(c fiber.Ctx) error {
+		p := new(CreateOccasion)
+
+		if err := c.Bind().JSON(p); err != nil {
+			return err
+		}
+
+		err := dbC.CreateOccasion(c.Context(), db.CreateOccasionParams{
+			Name:         p.Name,
+			GiftReceiver: p.GiftReceiver,
+		})
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	app.Get("/occasions/:userId/all/", func(c fiber.Ctx) error {
+		userId := fiber.Params[int64](c, "userId", 0)
+		if userId == 0 {
+			return errors.New("invalid userId")
+		}
+
+		occasions, err := dbC.GetOccasionByUserId(c.Context(), userId)
+		if err != nil {
+			return err
+		}
+
+		return c.JSON(occasions)
 	})
 
 	app.Listen(":3000")
