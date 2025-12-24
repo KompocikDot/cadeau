@@ -1,0 +1,9 @@
+-- migrate:up
+CREATE TABLE IF NOT EXISTS users(
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  username VARCHAR NOT NULL UNIQUE,
+  password VARCHAR NOT NULL
+);
+
+-- migrate:down
+DROP TABLE IF EXISTS users;
