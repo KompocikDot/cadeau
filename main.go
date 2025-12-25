@@ -67,7 +67,7 @@ func main() {
 
 	api := app.Group("/api")
 
-	userApi := app.Group("/users")
+	userApi := api.Group("/users")
 	userApi.Get("/:userId/occasions/", func(c fiber.Ctx) error {
 		userId := fiber.Params[int64](c, "userId", 0)
 		if userId == 0 {
@@ -160,9 +160,9 @@ func main() {
 		}
 
 		claims := jwt.MapClaims{
-			"name":  "John Doe",
-			"admin": true,
-			"exp":   time.Now().Add(time.Hour * 72).Unix(),
+			"username": u.Username,
+			"id":       u.ID,
+			"exp":      time.Now().Add(time.Hour * 72).Unix(),
 		}
 
 		// Create token
@@ -181,7 +181,8 @@ func main() {
 		return nil
 	})
 
-	app.Post("/gifts", func(c fiber.Ctx) error { return nil })
+	giftsApi := api.Group("/gifts")
+	giftsApi.Post("/gifts", func(c fiber.Ctx) error { return nil })
 
 	if err := app.Listen(":8000"); err != nil {
 		log.Fatalln(err)
