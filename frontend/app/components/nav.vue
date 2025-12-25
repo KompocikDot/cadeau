@@ -1,39 +1,38 @@
 <script setup lang="ts">
-import type { NavigationMenuItem } from '@nuxt/ui'
+import type { NavigationMenuItem } from "@nuxt/ui";
 
-const route = useRoute()
+const route = useRoute();
 
 const items = computed<NavigationMenuItem[]>(() => [
   {
-    label: 'Login',
-    to: '/auth/login',
-    active: route.path.startsWith('/auth/login')
+    label: "Login",
+    to: "/auth/login",
+    active: route.path.startsWith("/auth/login"),
   },
   {
-    label: 'Register',
-    to: '/auth/register',
-    active: route.path.startsWith('/auth/register')
+    label: "Register",
+    to: "/auth/register",
+    active: route.path.startsWith("/auth/register"),
   },
   {
-    label: 'Dashboard',
-    to: '/dashboard',
-    active: route.path.startsWith('/dashboard')
+    label: "Dashboard",
+    to: "/dashboard",
+    active: route.path.startsWith("/dashboard"),
   },
-])
+]);
 </script>
 
 <template>
   <UHeader>
     <template #title>
-	<span class="text-lg hover:text-primary">CADEAU</span>
+      <span class="text-lg hover:text-primary">CADEAU</span>
     </template>
 
     <UNavigationMenu :items="items" />
 
-		<template #body>
-           <UNavigationMenu orientation="vertical" :items="links" />
-      </template>
-
+    <template #body>
+      <UNavigationMenu orientation="vertical" :items="links" />
+    </template>
 
     <template #right>
       <UColorModeButton />
@@ -49,7 +48,5 @@ const items = computed<NavigationMenuItem[]>(() => [
         />
       </UTooltip>
     </template>
-
   </UHeader>
 </template>
-

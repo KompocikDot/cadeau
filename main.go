@@ -5,10 +5,15 @@ import (
 	"errors"
 	"log"
 	"net/url"
+	"time"
 
 	db "github.com/KompocikDot/cadeau/db/generated"
 	"github.com/amacneil/dbmate/v2/pkg/dbmate"
+	// jwtware "github.com/gofiber/contrib/v3/jwt"
 	"github.com/gofiber/fiber/v3"
+	// "github.com/gofiber/fiber/v3/extractors"
+	"github.com/gofiber/fiber/v3/middleware/cors"
+	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 
 	_ "github.com/amacneil/dbmate/v2/pkg/driver/sqlite"
@@ -40,6 +45,11 @@ func main() {
 		AppName:       "CadeauAPI",
 	})
 
+	app.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:3000"},
+		AllowCredentials: true,
+	}))
+
 	u, _ := url.Parse("sqlite:db.sqlite3")
 	migrate := dbmate.New(u)
 
@@ -55,46 +65,25 @@ func main() {
 
 	dbC := db.New(conn)
 
-	app.Post("/auth/register/", func(c fiber.Ctx) error {
-		p := new(UserRegister)
+	api := app.Group("/api")
 
-		if err := c.Bind().JSON(p); err != nil {
-			return err
+	userApi := app.Group("/users")
+	userApi.Get("/:userId/occasions/", func(c fiber.Ctx) error {
+		userId := fiber.Params[int64](c, "userId", 0)
+		if userId == 0 {
+			return errors.New("invalid userId")
 		}
 
-		hashedPwd, _ := bcrypt.GenerateFromPassword([]byte(p.Password), bcrypt.DefaultCost)
-		err := dbC.CreateUser(c.Context(), db.CreateUserParams{
-			Username: p.Username,
-			Password: string(hashedPwd),
-		})
-
+		occasions, err := dbC.GetUserOccasionsByUserId(c.Context(), userId)
 		if err != nil {
 			return err
 		}
 
-		return nil
+		return c.JSON(occasions)
 	})
 
-	app.Post("/auth/login/", func(c fiber.Ctx) error {
-		p := new(UserLogin)
-
-		if err := c.Bind().JSON(p); err != nil {
-			return err
-		}
-
-		u, err := dbC.GetUserByUsername(c.Context(), p.Username)
-		if err != nil {
-			return err
-		}
-
-		if bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(p.Password)) != nil {
-			return errors.New("password does not match")
-		}
-
-		return nil
-	})
-
-	app.Post("/occasions/", func(c fiber.Ctx) error {
+	occasionApi := api.Group("/occasions")
+	occasionApi.Post("/", func(c fiber.Ctx) error {
 		p := new(CreateOccasion)
 
 		if err := c.Bind().JSON(p); err != nil {
@@ -111,22 +100,7 @@ func main() {
 
 		return nil
 	})
-
-	app.Get("/users/:userId/occasions/", func(c fiber.Ctx) error {
-		userId := fiber.Params[int64](c, "userId", 0)
-		if userId == 0 {
-			return errors.New("invalid userId")
-		}
-
-		occasions, err := dbC.GetUserOccasionsByUserId(c.Context(), userId)
-		if err != nil {
-			return err
-		}
-
-		return c.JSON(occasions)
-	})
-
-	app.Get("/occasions/:occasionId/", func(c fiber.Ctx) error {
+	occasionApi.Get("/:occasionId/", func(c fiber.Ctx) error {
 		userId := fiber.Params[int64](c, "userId", 0)
 		if userId == 0 {
 			return errors.New("invalid userId")
@@ -148,7 +122,68 @@ func main() {
 		return c.JSON(occasion)
 	})
 
+	auth := app.Group("/auth")
+	auth.Post("/auth/register/", func(c fiber.Ctx) error {
+		p := new(UserRegister)
+
+		if err := c.Bind().JSON(p); err != nil {
+			return err
+		}
+
+		hashedPwd, _ := bcrypt.GenerateFromPassword([]byte(p.Password), bcrypt.DefaultCost)
+		err := dbC.CreateUser(c.Context(), db.CreateUserParams{
+			Username: p.Username,
+			Password: string(hashedPwd),
+		})
+
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	auth.Post("/auth/login/", func(c fiber.Ctx) error {
+		p := new(UserLogin)
+
+		if err := c.Bind().JSON(p); err != nil {
+			return err
+		}
+
+		u, err := dbC.GetUserByUsername(c.Context(), p.Username)
+		if err != nil {
+			return err
+		}
+
+		if bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(p.Password)) != nil {
+			return errors.New("password does not match")
+		}
+
+		claims := jwt.MapClaims{
+			"name":  "John Doe",
+			"admin": true,
+			"exp":   time.Now().Add(time.Hour * 72).Unix(),
+		}
+
+		// Create token
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+		// Generate encoded token and send it as response.
+		t, err := token.SignedString([]byte("secret"))
+		c.Cookie(&fiber.Cookie{
+			Name:     "token",
+			Value:    t,
+			Path:     "/",
+			Domain:   "localhost",
+			HTTPOnly: true,
+		})
+
+		return nil
+	})
+
 	app.Post("/gifts", func(c fiber.Ctx) error { return nil })
 
-	app.Listen(":3000")
+	if err := app.Listen(":8000"); err != nil {
+		log.Fatalln(err)
+	}
 }

@@ -88,11 +88,11 @@ Standard workflow: Migration -> Query -> Generate -> Handler.
 
 Visual layer setup.
 
-- [ ] **Nuxt Initialization**:
-  - [ ] `npx nuxi@latest init <project-name>`.
-  - [ ] Set `ssr: false` in `nuxt.config.ts`.
-- [ ] **Dependencies**: Install TailwindCSS and Pinia.
-- [ ] **API Client**: Create a composable using `$fetch` pointing to localhost.
+- [X] **Nuxt Initialization**:
+  - [X] `npx nuxi@latest init <project-name>`.
+  - [X] Set `ssr: false` in `nuxt.config.ts`.
+- [X] **Dependencies**: Install TailwindCSS and Pinia.
+- [X] **API Client**: Create a composable using `$fetch` pointing to localhost.
 
 ---
 
