@@ -6,20 +6,18 @@ const emit = defineEmits(["success"]);
 
 const schema = z.object({
   name: z.string("Invalid name").min(2, "Must be at least 8 characters long"),
-  giftReceiver: z.number("receiver ID is required"),
 });
 
 type Schema = z.output<typeof schema>;
 
 const state = reactive<Partial<Schema>>({
   name: undefined,
-  giftReceiver: undefined,
 });
 
 const receivers = [1, 2];
 async function onSubmit(event: FormSubmitEvent<Schema>) {
   try {
-    await $fetch("http://localhost:8000/api/occasions/", {
+    await $fetch("http://localhost:8000/api/user/me/occasions/", {
       method: "POST",
       credentials: "include",
       body: event.data,
@@ -36,10 +34,6 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
   <UForm :schema="schema" :state="state" class="space-y-4" @submit="onSubmit">
     <UFormField label="Name" name="name">
       <UInput v-model="state.name" />
-    </UFormField>
-
-    <UFormField label="Receiver" name="giftReceiver">
-      <USelectMenu v-model="state.giftReceiver" :items="receivers" />
     </UFormField>
 
     <UButton type="submit">Submit</UButton>

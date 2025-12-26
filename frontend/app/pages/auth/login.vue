@@ -37,7 +37,7 @@ type Schema = z.output<typeof schema>;
 
 async function onSubmit(payload: FormSubmitEvent<Schema>) {
   try {
-    await $fetch("http://localhost:8000/auth/login/", {
+    await $fetch("http://localhost:8000/api/auth/login/", {
       method: "POST",
       body: payload.data,
       credentials: "include",

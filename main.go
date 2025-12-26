@@ -9,9 +9,9 @@ import (
 
 	db "github.com/KompocikDot/cadeau/db/generated"
 	"github.com/amacneil/dbmate/v2/pkg/dbmate"
-	// jwtware "github.com/gofiber/contrib/v3/jwt"
+	jwtware "github.com/gofiber/contrib/v3/jwt"
 	"github.com/gofiber/fiber/v3"
-	// "github.com/gofiber/fiber/v3/extractors"
+	"github.com/gofiber/fiber/v3/extractors"
 	"github.com/gofiber/fiber/v3/middleware/cors"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
@@ -34,8 +34,7 @@ type UserRegister struct {
 }
 
 type CreateOccasion struct {
-	Name         string `json:"name"`
-	GiftReceiver int64  `json:"giftReceiver"`
+	Name string `json:"name"`
 }
 
 func main() {
@@ -65,14 +64,18 @@ func main() {
 
 	dbC := db.New(conn)
 
-	api := app.Group("/api")
+	jwtMiddleware := jwtware.New(jwtware.Config{
+		SigningKey: jwtware.SigningKey{Key: []byte("secret")},
+		Extractor:  extractors.FromCookie("token"),
+	})
 
-	userApi := api.Group("/users")
-	userApi.Get("/:userId/occasions/", func(c fiber.Ctx) error {
-		userId := fiber.Params[int64](c, "userId", 0)
-		if userId == 0 {
-			return errors.New("invalid userId")
-		}
+	api := app.Group("/api")
+	userApi := api.Group("/user").Use(jwtMiddleware)
+
+	userApi.Get("/me/occasions/", func(c fiber.Ctx) error {
+		user := jwtware.FromContext(c)
+		claims := user.Claims.(jwt.MapClaims)
+		userId := int64(claims["id"].(float64))
 
 		occasions, err := dbC.GetUserOccasionsByUserId(c.Context(), userId)
 		if err != nil {
@@ -82,29 +85,10 @@ func main() {
 		return c.JSON(occasions)
 	})
 
-	occasionApi := api.Group("/occasions")
-	occasionApi.Post("/", func(c fiber.Ctx) error {
-		p := new(CreateOccasion)
-
-		if err := c.Bind().JSON(p); err != nil {
-			return err
-		}
-
-		err := dbC.CreateOccasion(c.Context(), db.CreateOccasionParams{
-			Name:         p.Name,
-			GiftReceiver: p.GiftReceiver,
-		})
-		if err != nil {
-			return err
-		}
-
-		return nil
-	})
-	occasionApi.Get("/:occasionId/", func(c fiber.Ctx) error {
-		userId := fiber.Params[int64](c, "userId", 0)
-		if userId == 0 {
-			return errors.New("invalid userId")
-		}
+	userApi.Get("/me/occasions/:occasionId/", func(c fiber.Ctx) error {
+		user := jwtware.FromContext(c)
+		claims := user.Claims.(jwt.MapClaims)
+		userId := int64(claims["id"].(float64))
 
 		occasionId := fiber.Params[int64](c, "occasionId", 0)
 		if occasionId == 0 {
@@ -122,8 +106,29 @@ func main() {
 		return c.JSON(occasion)
 	})
 
-	auth := app.Group("/auth")
-	auth.Post("/auth/register/", func(c fiber.Ctx) error {
+	userApi.Post("/me/occasions/", func(c fiber.Ctx) error {
+		p := new(CreateOccasion)
+		if err := c.Bind().JSON(p); err != nil {
+			return err
+		}
+
+		user := jwtware.FromContext(c)
+		claims := user.Claims.(jwt.MapClaims)
+		userId := int64(claims["id"].(float64))
+
+		err := dbC.CreateOccasion(c.Context(), db.CreateOccasionParams{
+			Name:         p.Name,
+			GiftReceiver: userId,
+		})
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	auth := api.Group("/auth")
+	auth.Post("/register/", func(c fiber.Ctx) error {
 		p := new(UserRegister)
 
 		if err := c.Bind().JSON(p); err != nil {
@@ -143,7 +148,7 @@ func main() {
 		return nil
 	})
 
-	auth.Post("/auth/login/", func(c fiber.Ctx) error {
+	auth.Post("/login/", func(c fiber.Ctx) error {
 		p := new(UserLogin)
 
 		if err := c.Bind().JSON(p); err != nil {
@@ -160,9 +165,8 @@ func main() {
 		}
 
 		claims := jwt.MapClaims{
-			"username": u.Username,
-			"id":       u.ID,
-			"exp":      time.Now().Add(time.Hour * 72).Unix(),
+			"id":  u.ID,
+			"exp": time.Now().Add(time.Hour * 72).Unix(),
 		}
 
 		// Create token
@@ -180,9 +184,6 @@ func main() {
 
 		return nil
 	})
-
-	giftsApi := api.Group("/gifts")
-	giftsApi.Post("/gifts", func(c fiber.Ctx) error { return nil })
 
 	if err := app.Listen(":8000"); err != nil {
 		log.Fatalln(err)

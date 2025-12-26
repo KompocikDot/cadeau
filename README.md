@@ -10,9 +10,9 @@ Defining the foundation and initializing the Go module.
 - [ ] **Repository Initialization**
   - [X] `git init`.
   - [X] Create `.gitignore`:
-    - [ ] Add `main` (binary).
+    - [X] Add `main` (binary).
     - [X] Add `*.db`, `*.db-journal`, `*.sqlite`.
-    - [ ] Add `node_modules`, `.env`, `.output`, `dist`.
+    - [X] Add `node_modules`, `.env`, `.output`, `dist`.
 - [X] **Tooling Setup**
   - [X] Install **sqlc**: `brew install sqlc` (or go install).
   - [X] Install **dbmate** (CLI) only for generating files: `brew install dbmate`.
@@ -47,19 +47,19 @@ Setting up the programmatic migration runner and SQLC.
   - [X] Set `path` to `internal/database` (or where you want generated code).
   - [X] Point `schema` to `db/migrations`.
   - [X] Point `queries` to `db/queries`.
-- [ ] **User Queries**:
-  - [ ] Create `db/queries/users.sql`.
-  - [ ] Write: `CreateUser`, `GetUserByEmail`, `GetUserById`.
-  - [ ] Run `sqlc generate`.
+- [X] **User Queries**:
+  - [X] Create `db/queries/users.sql`.
+  - [X] Write: `CreateUser`, `GetUserByEmail`, `GetUserById`.
+  - [X] Run `sqlc generate`.
 
 ### 2.3 Authentication Logic
 
 - [X] **Server**: Initialize `fiber.New()`.
 - [X] **DB Connection**: Open `sql.Open` (separate from dbmate, for app usage) and pass to SQLC `New()`.
-- [ ] **Endpoints**:
-  - [ ] `POST /auth/register`: Validate -> Hash -> `queries.CreateUser`.
-  - [ ] `POST /auth/login`: `queries.GetUserByEmail` -> Check Hash -> Generate JWT.
-- [ ] **Middleware**: JWT validation parsing `Authorization` header.
+- [X] **Endpoints**:
+  - [X] `POST /auth/register`: Validate -> Hash -> `queries.CreateUser`.
+  - [X] `POST /auth/login`: `queries.GetUserByEmail` -> Check Hash -> Generate JWT.
+- [X] **Middleware**: JWT validation parsing `Authorization` header.
 
 ---
 

@@ -35,9 +35,20 @@ const schema = z.object({
 
 type Schema = z.output<typeof schema>;
 
-function onSubmit(payload: FormSubmitEvent<Schema>) {
-  console.log("Submitted", payload);
-}
+const onSubmit = async (payload: FormSubmitEvent<Schema>) => {
+  try {
+    await $fetch("http://localhost:8000/api/auth/register/", {
+      method: "POST",
+      body: payload.data,
+      credentials: "include",
+    });
+
+    navigateTo("/auth/login");
+    console.log("should redirect");
+  } catch (e) {
+    console.log(e);
+  }
+};
 </script>
 
 <template>

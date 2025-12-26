@@ -34,7 +34,7 @@ const items: NavigationMenuItem[][] = [
 ];
 
 const handleSuccess = (data: { name: string; giftReceiver: number }) => {
-  requests.value.unshift(data);
+  requests.value.unshift({ Name: data.name });
   modalOpen.value = false;
 
   toast.add({
@@ -46,7 +46,10 @@ const handleSuccess = (data: { name: string; giftReceiver: number }) => {
 
 const fetchRequests = async () => {
   try {
-    const data = await $fetch("http://localhost:8000/api/users/1/occasions/");
+    const data = await $fetch("http://localhost:8000/api/user/me/occasions/", {
+      credentials: "include",
+    });
+
     requests.value = data;
     fetchingRequests.value = false;
   } catch (e) {
@@ -83,11 +86,20 @@ onMounted(() => fetchRequests());
         title="No requests found"
         description="It looks like you haven't added any requests. Create one to get started."
       />
-      <ul v-else>
-        <li v-for="request in requests">
-          {{ request.Name }}
-        </li>
-      </ul>
+      <UScrollArea
+        v-else
+        v-slot="{ item, index }"
+        :items="requests.map((r) => ({ title: r.Name, id: r.Id }))"
+        orientation="vertical"
+        class="w-full data-[orientation=vertical]:h-120 border border-default rounded-sm"
+      >
+        <UPageCard
+          v-bind="item"
+          :variant="index % 2 === 0 ? 'soft' : 'outline'"
+          :to="{ params: { id: item.id } }"
+          class="rounded-none"
+        />
+      </UScrollArea>
     </div>
   </UContainer>
 </template>
