@@ -1,11 +1,14 @@
-const allowed = ["/auth/login", "/auth/register", "/"];
-
+// middleware/auth.global.ts
 export default defineNuxtRouteMiddleware((to) => {
-  if (allowed.includes(to.path)) {
-    return;
+  const { isLoggedIn } = useAuth();
+
+  const publicRoutes = ["/auth/login", "/auth/register", "/"];
+
+  if (!isLoggedIn.value && !publicRoutes.includes(to.path)) {
+    return navigateTo("/auth/login");
   }
 
-  // if (useCookie('token').value === undefined) {
-  // 	return navigateTo('/auth/login')
-  // }
+  if (isLoggedIn.value && publicRoutes.includes(to.path)) {
+    return navigateTo("/dashboard");
+  }
 });

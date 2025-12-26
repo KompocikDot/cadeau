@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import * as z from "zod";
 import type { FormSubmitEvent } from "@nuxt/ui";
+import type { FetchError } from "ofetch";
 
 const emit = defineEmits(["success"]);
 
@@ -24,8 +25,8 @@ async function onSubmit(event: FormSubmitEvent<Schema>) {
     });
 
     emit("success", event.data);
-  } catch (e: FetchError) {
-    console.log(e.data);
+  } catch (e) {
+    console.log((e as FetchError).data);
   }
 }
 </script>

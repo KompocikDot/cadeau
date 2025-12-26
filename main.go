@@ -13,6 +13,8 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/extractors"
 	"github.com/gofiber/fiber/v3/middleware/cors"
+	"github.com/gofiber/fiber/v3/middleware/helmet"
+	"github.com/gofiber/fiber/v3/middleware/logger"
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
 
@@ -47,7 +49,7 @@ func main() {
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:3000"},
 		AllowCredentials: true,
-	}))
+	}), helmet.New(), logger.New())
 
 	u, _ := url.Parse("sqlite:db.sqlite3")
 	migrate := dbmate.New(u)
@@ -67,10 +69,23 @@ func main() {
 	jwtMiddleware := jwtware.New(jwtware.Config{
 		SigningKey: jwtware.SigningKey{Key: []byte("secret")},
 		Extractor:  extractors.FromCookie("token"),
+		ErrorHandler: func(c fiber.Ctx, err error) error {
+			if errors.Is(err, extractors.ErrNotFound) {
+				return c.Status(fiber.StatusUnauthorized).SendString("Invalid or expired JWT")
+			}
+			if e, ok := err.(*fiber.Error); ok {
+				return c.Status(e.Code).SendString(e.Message)
+			}
+			return c.Status(fiber.StatusUnauthorized).SendString("Invalid or expired JWT")
+		},
 	})
 
 	api := app.Group("/api")
 	userApi := api.Group("/user").Use(jwtMiddleware)
+
+	userApi.Get("/me/", jwtMiddleware, func(c fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusOK)
+	})
 
 	userApi.Get("/me/occasions/", func(c fiber.Ctx) error {
 		user := jwtware.FromContext(c)
@@ -164,9 +179,10 @@ func main() {
 			return errors.New("password does not match")
 		}
 
+		expiryDate := time.Now().Add(time.Hour * 72)
 		claims := jwt.MapClaims{
 			"id":  u.ID,
-			"exp": time.Now().Add(time.Hour * 72).Unix(),
+			"exp": expiryDate.Unix(),
 		}
 
 		// Create token
@@ -180,6 +196,22 @@ func main() {
 			Path:     "/",
 			Domain:   "localhost",
 			HTTPOnly: true,
+			Expires:  expiryDate,
+			SameSite: "strict",
+		})
+
+		return nil
+	})
+
+	auth.Get("/logout/", func(c fiber.Ctx) error {
+		c.Cookie(&fiber.Cookie{
+			Name:     "token",
+			Value:    "",
+			Path:     "/",
+			Domain:   "localhost",
+			HTTPOnly: true,
+			Expires:  time.Time{},
+			SameSite: "strict",
 		})
 
 		return nil

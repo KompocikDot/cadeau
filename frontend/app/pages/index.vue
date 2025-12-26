@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import type { TimelineItem, ButtonProps } from "@nuxt/ui";
+
 const route = useRoute();
 
-const links = [
+const links: ButtonProps[] = [
   {
     label: "Get started",
     to: "/auth/login",
@@ -15,7 +17,7 @@ const links = [
   },
 ];
 
-const items = [
+const items: TimelineItem[] = [
   {
     title: "Add Your Wishes",
     description:

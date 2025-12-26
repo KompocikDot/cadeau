@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import type { NavigationMenuItem } from "@nuxt/ui";
+import type { UserOccasion } from "../../types/responses";
+import type { FetchError } from "ofetch";
 
 definePageMeta({
   layout: "dashboard",
@@ -8,33 +10,24 @@ definePageMeta({
 const route = useRoute();
 const toast = useToast();
 
-const requests = ref([]);
+const requests = ref<UserOccasion[]>([]);
 const modalOpen = ref(false);
 const fetchingRequests = ref(true);
 
-const items: NavigationMenuItem[][] = [
-  [
-    {
-      label: "Your requests",
-      icon: "i-lucide-scroll",
-      active: route.path.startsWith("/dashboard"),
-    },
-    {
-      label: "Request lists",
-      icon: "i-lucide-notepad-text",
-    },
-  ],
-  [
-    {
-      label: "Logout",
-      icon: "i-lucide-log-out",
-      to: "https://github.com/nuxt/ui/issues",
-    },
-  ],
+const items: NavigationMenuItem[] = [
+  {
+    label: "Your requests",
+    icon: "i-lucide-scroll",
+    active: route.path.startsWith("/dashboard"),
+  },
+  {
+    label: "Request lists",
+    icon: "i-lucide-notepad-text",
+  },
 ];
 
 const handleSuccess = (data: { name: string; giftReceiver: number }) => {
-  requests.value.unshift({ Name: data.name });
+  requests.value.unshift({ Name: data.name, Id: 0 });
   modalOpen.value = false;
 
   toast.add({
@@ -46,9 +39,10 @@ const handleSuccess = (data: { name: string; giftReceiver: number }) => {
 
 const fetchRequests = async () => {
   try {
-    const data = await $fetch("http://localhost:8000/api/user/me/occasions/", {
-      credentials: "include",
-    });
+    const data = await $api<UserOccasion[]>(
+      "http://localhost:8000/api/user/me/occasions/",
+      { credentials: "include" },
+    );
 
     requests.value = data;
     fetchingRequests.value = false;
@@ -62,7 +56,10 @@ onMounted(() => fetchRequests());
 
 <template>
   <UDashboardToolbar>
-    <UNavigationMenu :items="items" highlight class="flex-1" />
+    <template #left>
+      <UNavigationMenu :items="items" highlight class="flex-1" />
+    </template>
+    <template #right> </template>
   </UDashboardToolbar>
   <UContainer>
     <div class="py-5">
@@ -96,7 +93,6 @@ onMounted(() => fetchRequests());
         <UPageCard
           v-bind="item"
           :variant="index % 2 === 0 ? 'soft' : 'outline'"
-          :to="{ params: { id: item.id } }"
           class="rounded-none"
         />
       </UScrollArea>

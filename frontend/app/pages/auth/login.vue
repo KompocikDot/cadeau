@@ -2,6 +2,7 @@
 import * as z from "zod";
 import type { FormSubmitEvent, AuthFormField } from "@nuxt/ui";
 
+const { login } = useAuth();
 const toast = useToast();
 
 const fields: AuthFormField[] = [
@@ -37,14 +38,7 @@ type Schema = z.output<typeof schema>;
 
 async function onSubmit(payload: FormSubmitEvent<Schema>) {
   try {
-    await $fetch("http://localhost:8000/api/auth/login/", {
-      method: "POST",
-      body: payload.data,
-      credentials: "include",
-    });
-
-    navigateTo("/dashboard");
-    console.log("should redirect");
+    await login(payload.data);
   } catch (e) {
     console.log(e);
   }
