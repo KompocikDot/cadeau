@@ -39,6 +39,15 @@ type CreateOccasion struct {
 	Name string `json:"name"`
 }
 
+type OccasionResponse struct {
+	Name string `json:"name"`
+	Id   int64  `json:"id"`
+}
+
+type CreateOccasionResponse struct {
+	Id int64 `json:"id"`
+}
+
 func main() {
 	app := fiber.New(fiber.Config{
 		CaseSensitive: true,
@@ -97,7 +106,15 @@ func main() {
 			return err
 		}
 
-		return c.JSON(occasions)
+		res := make([]OccasionResponse, len(occasions))
+		for i, o := range occasions {
+			res[i] = OccasionResponse{
+				Name: o.Name,
+				Id:   o.ID,
+			}
+		}
+
+		return c.JSON(res)
 	})
 
 	userApi.Get("/me/occasions/:occasionId/", func(c fiber.Ctx) error {
@@ -118,7 +135,7 @@ func main() {
 			return err
 		}
 
-		return c.JSON(occasion)
+		return c.JSON(OccasionResponse{Name: occasion.Name, Id: occasion.ID})
 	})
 
 	userApi.Post("/me/occasions/", func(c fiber.Ctx) error {
@@ -131,7 +148,7 @@ func main() {
 		claims := user.Claims.(jwt.MapClaims)
 		userId := int64(claims["id"].(float64))
 
-		err := dbC.CreateOccasion(c.Context(), db.CreateOccasionParams{
+		newId, err := dbC.CreateOccasion(c.Context(), db.CreateOccasionParams{
 			Name:         p.Name,
 			GiftReceiver: userId,
 		})
@@ -139,7 +156,7 @@ func main() {
 			return err
 		}
 
-		return nil
+		return c.JSON(CreateOccasionResponse{Id: newId})
 	})
 
 	auth := api.Group("/auth")

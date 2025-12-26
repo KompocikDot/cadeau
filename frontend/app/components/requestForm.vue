@@ -3,7 +3,7 @@ import * as z from "zod";
 import type { FormSubmitEvent } from "@nuxt/ui";
 import type { FetchError } from "ofetch";
 
-const emit = defineEmits(["success"]);
+const emit = defineEmits(["submit"]);
 
 const schema = z.object({
   name: z.string("Invalid name").min(2, "Must be at least 8 characters long"),
@@ -16,23 +16,15 @@ const state = reactive<Partial<Schema>>({
 });
 
 const receivers = [1, 2];
-async function onSubmit(event: FormSubmitEvent<Schema>) {
-  try {
-    await $fetch("http://localhost:8000/api/user/me/occasions/", {
-      method: "POST",
-      credentials: "include",
-      body: event.data,
-    });
-
-    emit("success", event.data);
-  } catch (e) {
-    console.log((e as FetchError).data);
-  }
-}
 </script>
 
 <template>
-  <UForm :schema="schema" :state="state" class="space-y-4" @submit="onSubmit">
+  <UForm
+    :schema="schema"
+    :state="state"
+    class="space-y-4"
+    @submit="emit('submit', $event)"
+  >
     <UFormField label="Name" name="name">
       <UInput v-model="state.name" />
     </UFormField>

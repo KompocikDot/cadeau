@@ -1,12 +1,27 @@
 <script setup lang="ts">
+import type { NavigationMenuItem } from "@nuxt/ui";
+
+const route = useRoute();
 const { logout } = useAuth();
+
+const items = computed<NavigationMenuItem[]>(() => [
+  {
+    label: "Your requests",
+    icon: "i-lucide-scroll",
+    to: "/user/requests",
+    active: route.path.startsWith("/user/requests"),
+  },
+  {
+    label: "Request lists",
+    icon: "i-lucide-notepad-text",
+    to: "/occasions",
+    active: route.path.startsWith("/occasions"),
+  },
+]);
 
 const onLogout = async () => {
   try {
-    await $fetch("http://localhost:8000/api/auth/logout/", {
-      credentials: "include",
-    });
-
+    await $api("http://localhost:8000/api/auth/logout/");
     logout();
   } catch (e) {
     console.log(e);
@@ -31,8 +46,18 @@ const onLogout = async () => {
       />
     </template>
   </UHeader>
+
+  <UDashboardToolbar>
+    <template #left>
+      <UNavigationMenu :items="items" highlight class="flex-1" />
+    </template>
+    <template #right> </template>
+  </UDashboardToolbar>
+
   <UMain>
-    <NuxtPage />
+    <UContainer>
+      <NuxtPage />
+    </UContainer>
   </UMain>
   <Footer />
 </template>

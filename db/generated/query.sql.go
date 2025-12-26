@@ -24,7 +24,7 @@ func (q *Queries) CreateGift(ctx context.Context, arg CreateGiftParams) error {
 	return err
 }
 
-const createOccasion = `-- name: CreateOccasion :exec
+const createOccasion = `-- name: CreateOccasion :execlastid
 INSERT INTO occasions(name, gift_receiver) values(?, ?)
 `
 
@@ -33,9 +33,12 @@ type CreateOccasionParams struct {
 	GiftReceiver int64
 }
 
-func (q *Queries) CreateOccasion(ctx context.Context, arg CreateOccasionParams) error {
-	_, err := q.db.ExecContext(ctx, createOccasion, arg.Name, arg.GiftReceiver)
-	return err
+func (q *Queries) CreateOccasion(ctx context.Context, arg CreateOccasionParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, createOccasion, arg.Name, arg.GiftReceiver)
+	if err != nil {
+		return 0, err
+	}
+	return result.LastInsertId()
 }
 
 const createUser = `-- name: CreateUser :exec

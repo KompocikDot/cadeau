@@ -7,7 +7,7 @@ Defining the foundation and initializing the Go module.
 - [ ] **Data Model Definition**
   - [ ] Plan the Schema: User (id, email, password_hash, role) and 2-3 main entities.
   - [ ] Plan Relationships: Foreign keys for SQLite (e.g., `user_id` in items table).
-- [ ] **Repository Initialization**
+- [X] **Repository Initialization**
   - [X] `git init`.
   - [X] Create `.gitignore`:
     - [X] Add `main` (binary).
@@ -100,9 +100,9 @@ Visual layer setup.
 
 ### 5.1 Auth Integration
 
-- [ ] **Store**: Pinia store for User state.
-- [ ] **Login/Register UI**: Forms connected to API.
-- [ ] **Persistance**: Store token in Cookie/LocalStorage.
+- [X] **Store**: Pinia store for User state.
+- [X] **Login/Register UI**: Forms connected to API.
+- [X] **Persistance**: Store token in Cookie/LocalStorage.
 
 ### 5.2 CRUD UI
 
@@ -126,7 +126,7 @@ Visual layer setup.
 ### Frontend
 
 - [ ] **Types**: TypeScript interfaces matching Go structs.
-- [ ] **Error Handling**: Global handling for 401 Unauthorized.
+- [X] **Error Handling**: Global handling for 401 Unauthorized.
 
 ---
 

@@ -19,7 +19,7 @@ export const useAuth = () => {
 
     await fetchUser();
 
-    return navigateTo("/dashboard");
+    return navigateTo("/user/requests");
   }
 
   function logout() {

@@ -9,6 +9,6 @@ export default defineNuxtRouteMiddleware((to) => {
   }
 
   if (isLoggedIn.value && publicRoutes.includes(to.path)) {
-    return navigateTo("/dashboard");
+    return navigateTo("/user/requests");
   }
 });

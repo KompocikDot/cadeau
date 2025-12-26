@@ -7,7 +7,7 @@ SELECT * FROM users WHERE username = ?;
 -- name: GetUserById :one
 SELECT * FROM users WHERE id = ?;
 
--- name: CreateOccasion :exec
+-- name: CreateOccasion :execlastid
 INSERT INTO occasions(name, gift_receiver) values(?, ?);
 
 -- name: GetUserOccasionsByUserId :many

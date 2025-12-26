@@ -1,4 +1,4 @@
 export type UserOccasion = {
-  Id: number;
+  ID: number;
   Name: string;
 };
