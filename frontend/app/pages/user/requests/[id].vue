@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { UserOccasion } from "~/types/responses";
+import type { FormSubmitEvent } from "@nuxt/ui";
 
 definePageMeta({
   layout: "dashboard",
@@ -8,47 +9,73 @@ definePageMeta({
 const route = useRoute();
 const toast = useToast();
 
-const modalOpen = ref(false);
-const request = ref<UserOccasion>({});
+const editModalOpen = ref(false);
+const addModalOpen = ref(false);
+const request = ref<UserOccasion | {}>({});
 const fetchingRequest = ref(true);
-
-const handleSuccess = (data: { name: string; ID: number }) => {
-  request.value = { Name: data.name, Id: data.ID };
-  modalOpen.value = false;
-
-  toast.add({
-    title: "Success",
-    description: "The request have been created",
-    color: "success",
-  });
-};
+const gifts = ref([]);
 
 const fetchRequest = async () => {
   try {
     const data = await $api<UserOccasion>(
       `http://localhost:8000/api/user/me/occasions/${route.params.id}`,
-      { credentials: "include" },
     );
 
     request.value = data;
+
+    const giftsData = await $api<UserOccasion>(
+      `http://localhost:8000/api/user/me/occasions/${route.params.id}/gifts/`,
+    );
+
+    gifts.value = giftsData;
     fetchingRequest.value = false;
   } catch (e) {
     console.log(e);
   }
 };
 
-async function onSubmit(event: FormSubmitEvent<Schema>) {
+async function editOccasion(event: FormSubmitEvent<any>) {
   try {
-    const data = await $api("http://localhost:8000/api/user/me/occasions/", {
-      method: "POST",
-      body: event.data,
-    });
+    const data = await $api(
+      `http://localhost:8000/api/user/me/occasions/${route.params.id}/`,
+      {
+        method: "PATCH",
+        body: event.data,
+      },
+    );
 
-    handleSuccess({ ...event.data, Id: data.Id });
+    request.value = { name: data.name, id: data.id };
+    editModalOpen.value = false;
+
+    toast.add({
+      title: "Success",
+      description: "The request have been edited",
+      color: "success",
+    });
   } catch (e) {
     console.log((e as FetchError).data);
   }
 }
+
+const addGift = async (event: FormSubmitEvent<any>) => {
+  try {
+    await $api(
+      `http://localhost:8000/api/user/me/occasions/${route.params.id}/gifts/`,
+      { method: "POST", body: event.data },
+    );
+
+    gifts.value.push(event.data);
+    addModalOpen.value = false;
+
+    toast.add({
+      title: "Success",
+      description: "The gift have been added",
+      color: "success",
+    });
+  } catch {
+    console.log((e as FetchError).data);
+  }
+};
 
 onMounted(() => fetchRequest());
 </script>
@@ -56,19 +83,33 @@ onMounted(() => fetchRequest());
 <template>
   <div class="py-5">
     <div class="flex justify-between py-5">
-      <div class="text-3xl">Request: {{ data?.Name }}</div>
-      <UModal
-        :dismissible="false"
-        title="Edit request"
-        v-model:open="modalOpen"
-      >
-        <UButton label="Edit request" />
+      <div class="text-3xl">Request: {{ data?.name }}</div>
+      <div class="flex gap-x-2">
+        <UModal
+          :dismissible="false"
+          title="Add gift"
+          v-model:open="addModalOpen"
+        >
+          <UButton label="Add gift" variant="outline" />
 
-        <template #body>
-          <RequestForm @submit="onSubmit" />
-        </template>
-      </UModal>
+          <template #body>
+            <RequestForm @submit="addGift" />
+          </template>
+        </UModal>
+        <UModal
+          :dismissible="false"
+          title="Edit request"
+          v-model:open="editModalOpen"
+        >
+          <UButton label="Edit request" />
+
+          <template #body>
+            <RequestForm @submit="editOccasion" />
+          </template>
+        </UModal>
+      </div>
     </div>
     <USkeleton v-if="fetchingRequest" class="h-96" />
+    <UTable :data="gifts" class="flex-1" />
   </div>
 </template>

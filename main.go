@@ -48,6 +48,16 @@ type CreateOccasionResponse struct {
 	Id int64 `json:"id"`
 }
 
+type CreateGift struct {
+	Name string `json:"name"`
+	URL  string `json:"url"`
+}
+
+type GiftResponse struct {
+	Name string `json:"name"`
+	URL  string `json:"url"`
+}
+
 func main() {
 	app := fiber.New(fiber.Config{
 		CaseSensitive: true,
@@ -101,7 +111,7 @@ func main() {
 		claims := user.Claims.(jwt.MapClaims)
 		userId := int64(claims["id"].(float64))
 
-		occasions, err := dbC.GetUserOccasionsByUserId(c.Context(), userId)
+		occasions, err := dbC.GetUserOccasionsByUserId(c, userId)
 		if err != nil {
 			return err
 		}
@@ -123,11 +133,11 @@ func main() {
 		userId := int64(claims["id"].(float64))
 
 		occasionId := fiber.Params[int64](c, "occasionId", 0)
-		if occasionId == 0 {
+		if occasionId <= 0 {
 			return errors.New("invalid occasionId")
 		}
 
-		occasion, err := dbC.GetOccasionById(c.Context(), db.GetOccasionByIdParams{
+		occasion, err := dbC.GetOccasionById(c, db.GetOccasionByIdParams{
 			ID:           occasionId,
 			GiftReceiver: userId,
 		})
@@ -136,6 +146,70 @@ func main() {
 		}
 
 		return c.JSON(OccasionResponse{Name: occasion.Name, Id: occasion.ID})
+	})
+
+	userApi.Post("/me/occasions/:occasionId/gifts/", func(c fiber.Ctx) error {
+		g := new(CreateGift)
+		if err := c.Bind().JSON(g); err != nil {
+			return err
+		}
+
+		occasionId := fiber.Params[int64](c, "occasionId", 0)
+		if occasionId <= 0 {
+			return errors.New("invalid occasionId")
+		}
+
+		user := jwtware.FromContext(c)
+		claims := user.Claims.(jwt.MapClaims)
+		userId := int64(claims["id"].(float64))
+
+		_, err := dbC.GetOccasionById(c, db.GetOccasionByIdParams{ID: occasionId, GiftReceiver: userId})
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return c.SendStatus(fiber.StatusForbidden)
+			}
+
+			return err
+		}
+
+		err = dbC.CreateGift(c, db.CreateGiftParams{
+			Name:     g.Name,
+			Url:      g.URL,
+			Occasion: occasionId,
+		})
+
+		if err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	userApi.Get("/me/occasions/:occasionId/gifts/", func(c fiber.Ctx) error {
+		occasionId := fiber.Params[int64](c, "occasionId", 0)
+		if occasionId <= 0 {
+			return errors.New("invalid occasionId")
+		}
+
+		user := jwtware.FromContext(c)
+		claims := user.Claims.(jwt.MapClaims)
+		userId := int64(claims["id"].(float64))
+
+		gifts, err := dbC.SelectGiftsByOcassionId(c, db.SelectGiftsByOcassionIdParams{
+			Occasion:     occasionId,
+			GiftReceiver: userId,
+		})
+
+		if err != nil {
+			return err
+		}
+
+		res := make([]GiftResponse, len(gifts))
+		for i, g := range gifts {
+			res[i] = GiftResponse{Name: g.Name, URL: g.Url}
+		}
+
+		return c.JSON(res)
 	})
 
 	userApi.Post("/me/occasions/", func(c fiber.Ctx) error {
@@ -148,7 +222,7 @@ func main() {
 		claims := user.Claims.(jwt.MapClaims)
 		userId := int64(claims["id"].(float64))
 
-		newId, err := dbC.CreateOccasion(c.Context(), db.CreateOccasionParams{
+		newId, err := dbC.CreateOccasion(c, db.CreateOccasionParams{
 			Name:         p.Name,
 			GiftReceiver: userId,
 		})
@@ -187,7 +261,7 @@ func main() {
 			return err
 		}
 
-		u, err := dbC.GetUserByUsername(c.Context(), p.Username)
+		u, err := dbC.GetUserByUsername(c, p.Username)
 		if err != nil {
 			return err
 		}

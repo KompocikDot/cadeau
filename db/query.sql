@@ -24,3 +24,6 @@ INSERT INTO gifts(name, url, occasion) values(?, ?, ?);
 
 -- name: DeleteGift :exec
 DELETE FROM gifts WHERE id = ?;
+
+-- name: SelectGiftsByOcassionId :many
+SELECT *  FROM gifts AS g JOIN occasions AS o ON g.occasion = o.id WHERE g.occasion = ? AND o.gift_receiver = ?;

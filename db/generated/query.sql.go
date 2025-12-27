@@ -137,3 +137,53 @@ func (q *Queries) GetUserOccasionsByUserId(ctx context.Context, giftReceiver int
 	}
 	return items, nil
 }
+
+const selectGiftsByOcassionId = `-- name: SelectGiftsByOcassionId :many
+SELECT g.id, g.name, url, occasion, o.id, o.name, gift_receiver  FROM gifts AS g JOIN occasions AS o ON g.occasion = o.id WHERE g.occasion = ? AND o.gift_receiver = ?
+`
+
+type SelectGiftsByOcassionIdParams struct {
+	Occasion     int64
+	GiftReceiver int64
+}
+
+type SelectGiftsByOcassionIdRow struct {
+	ID           int64
+	Name         string
+	Url          string
+	Occasion     int64
+	ID_2         int64
+	Name_2       string
+	GiftReceiver int64
+}
+
+func (q *Queries) SelectGiftsByOcassionId(ctx context.Context, arg SelectGiftsByOcassionIdParams) ([]SelectGiftsByOcassionIdRow, error) {
+	rows, err := q.db.QueryContext(ctx, selectGiftsByOcassionId, arg.Occasion, arg.GiftReceiver)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SelectGiftsByOcassionIdRow
+	for rows.Next() {
+		var i SelectGiftsByOcassionIdRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Url,
+			&i.Occasion,
+			&i.ID_2,
+			&i.Name_2,
+			&i.GiftReceiver,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
