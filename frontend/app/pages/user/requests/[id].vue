@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import type { UserOccasion } from "~/types/responses";
 import type { FormSubmitEvent } from "@nuxt/ui";
+import type { TableColumn } from "@nuxt/ui";
+import { h, resolveComponent } from "#imports";
+import type { Row } from "@tanstack/vue-table";
 
 definePageMeta({
   layout: "dashboard",
@@ -9,25 +12,120 @@ definePageMeta({
 const route = useRoute();
 const toast = useToast();
 
-const editModalOpen = ref(false);
+const UDropdownMenu = resolveComponent("UDropdownMenu");
+const ULink = resolveComponent("ULink");
+const UButton = resolveComponent("UButton");
+
+const editRequestModalOpen = ref(false);
+const editModalOpen = reactive({
+  open: false,
+});
 const addModalOpen = ref(false);
 const request = ref<UserOccasion | {}>({});
 const fetchingRequest = ref(true);
 const gifts = ref([]);
 
+const removeGift = async (giftId: number) => {
+  try {
+    await $api(
+      `http://localhost:8000/api/user/me/occasions/${route.params.id}/gifts/${giftId}/`,
+      { method: "DELETE" },
+    );
+
+    gifts.value = gifts.value.filter((g) => g.id !== giftId);
+    toast.add({
+      title: "Gift successfully removed",
+      color: "success",
+      icon: "i-lucide-circle-check",
+    });
+  } catch {
+    console.log((e as FetchError).data);
+  }
+};
+
+function getRowItems(row: Row<Payment>) {
+  return [
+    {
+      type: "label",
+      label: "Actions",
+    },
+    {
+      label: "Edit gift details",
+      onSelect() {
+        editModalOpen.value = true;
+      },
+    },
+    {
+      label: "Delete gift",
+      onSelect() {
+        console.log(row.original);
+        removeGift(row.original.id);
+      },
+    },
+  ];
+}
+
+const columns: TableColumn<any>[] = [
+  { accessorKey: "name", header: "Name" },
+  {
+    accessorKey: "url",
+    header: "URL",
+    cell: ({ row }) => {
+      const url = row.getValue("url");
+      if (url === "") {
+        return "-";
+      }
+
+      return h(
+        ULink,
+        { to: url, class: "hover:text-primary click:text-primary" },
+        ["redirect"],
+      );
+    },
+  },
+  {
+    id: "actions",
+    cell: ({ row }) => {
+      return h(
+        "div",
+        { class: "text-right" },
+        h(
+          UDropdownMenu,
+          {
+            content: {
+              align: "end",
+            },
+            items: getRowItems(row),
+            "aria-label": "Actions dropdown",
+          },
+          () =>
+            h(UButton, {
+              icon: "i-lucide-ellipsis-vertical",
+              color: "neutral",
+              variant: "ghost",
+              class: "ml-auto",
+              "aria-label": "Actions dropdown",
+            }),
+        ),
+      );
+    },
+  },
+];
+
 const fetchRequest = async () => {
   try {
-    const data = await $api<UserOccasion>(
-      `http://localhost:8000/api/user/me/occasions/${route.params.id}`,
-    );
+    const [requestData, giftsData] = await Promise.all([
+      $api<UserOccasion>(
+        `http://localhost:8000/api/user/me/occasions/${route.params.id}`,
+      ),
+      $api<UserOccasion>(
+        `http://localhost:8000/api/user/me/occasions/${route.params.id}/gifts/`,
+      ),
+    ]);
 
-    request.value = data;
-
-    const giftsData = await $api<UserOccasion>(
-      `http://localhost:8000/api/user/me/occasions/${route.params.id}/gifts/`,
-    );
-
+    request.value = requestData;
     gifts.value = giftsData;
+
     fetchingRequest.value = false;
   } catch (e) {
     console.log(e);
@@ -83,7 +181,7 @@ onMounted(() => fetchRequest());
 <template>
   <div class="py-5">
     <div class="flex justify-between py-5">
-      <div class="text-3xl">Request: {{ data?.name }}</div>
+      <div class="text-3xl">Request: {{ request?.name }}</div>
       <div class="flex gap-x-2">
         <UModal
           :dismissible="false"
@@ -99,7 +197,7 @@ onMounted(() => fetchRequest());
         <UModal
           :dismissible="false"
           title="Edit request"
-          v-model:open="editModalOpen"
+          v-model:open="editRequestModalOpen"
         >
           <UButton label="Edit request" />
 
@@ -110,6 +208,15 @@ onMounted(() => fetchRequest());
       </div>
     </div>
     <USkeleton v-if="fetchingRequest" class="h-96" />
-    <UTable :data="gifts" class="flex-1" />
+    <UTable :data="gifts" :columns="columns" class="flex-1" />
   </div>
+  <UModal
+    :dismissible="false"
+    title="Edit request"
+    v-model:open="editModalOpen.open"
+  >
+    <template #body>
+      <RequestForm @submit="editGift" />
+    </template>
+  </UModal>
 </template>

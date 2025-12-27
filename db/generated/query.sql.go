@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 )
 
 const createGift = `-- name: CreateGift :exec
@@ -64,13 +65,33 @@ func (q *Queries) DeleteGift(ctx context.Context, id int64) error {
 	return err
 }
 
-const deleteOccasion = `-- name: DeleteOccasion :exec
-DELETE FROM occasions WHERE id = ?
+const getGiftById = `-- name: GetGiftById :one
+SELECT g.id, g.name, url, occasion, o.id, o.name, gift_receiver  FROM gifts AS g LEFT JOIN occasions AS o ON g.occasion = o.id WHERE g.id = ?
 `
 
-func (q *Queries) DeleteOccasion(ctx context.Context, id int64) error {
-	_, err := q.db.ExecContext(ctx, deleteOccasion, id)
-	return err
+type GetGiftByIdRow struct {
+	ID           int64
+	Name         string
+	Url          string
+	Occasion     int64
+	ID_2         sql.NullInt64
+	Name_2       sql.NullString
+	GiftReceiver sql.NullInt64
+}
+
+func (q *Queries) GetGiftById(ctx context.Context, id int64) (GetGiftByIdRow, error) {
+	row := q.db.QueryRowContext(ctx, getGiftById, id)
+	var i GetGiftByIdRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Url,
+		&i.Occasion,
+		&i.ID_2,
+		&i.Name_2,
+		&i.GiftReceiver,
+	)
+	return i, err
 }
 
 const getOccasionById = `-- name: GetOccasionById :one
@@ -186,4 +207,18 @@ func (q *Queries) SelectGiftsByOcassionId(ctx context.Context, arg SelectGiftsBy
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateOccasion = `-- name: UpdateOccasion :exec
+UPDATE occasions SET name = ? WHERE id = ?
+`
+
+type UpdateOccasionParams struct {
+	Name string
+	ID   int64
+}
+
+func (q *Queries) UpdateOccasion(ctx context.Context, arg UpdateOccasionParams) error {
+	_, err := q.db.ExecContext(ctx, updateOccasion, arg.Name, arg.ID)
+	return err
 }

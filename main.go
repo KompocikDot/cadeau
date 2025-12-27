@@ -48,6 +48,10 @@ type CreateOccasionResponse struct {
 	Id int64 `json:"id"`
 }
 
+type UpdateOccasion struct {
+	Name string `json:"name"`
+}
+
 type CreateGift struct {
 	Name string `json:"name"`
 	URL  string `json:"url"`
@@ -56,6 +60,7 @@ type CreateGift struct {
 type GiftResponse struct {
 	Name string `json:"name"`
 	URL  string `json:"url"`
+	Id   int64  `json:"id"`
 }
 
 func main() {
@@ -148,6 +153,29 @@ func main() {
 		return c.JSON(OccasionResponse{Name: occasion.Name, Id: occasion.ID})
 	})
 
+	userApi.Patch("/me/occasions/:occasionId/", func(c fiber.Ctx) error {
+		occasionId := fiber.Params[int64](c, "occasionId", 0)
+		if occasionId <= 0 {
+			return errors.New("invalid occasionId")
+		}
+
+		u := new(UpdateOccasion)
+		if err := c.Bind().JSON(u); err != nil {
+			return err
+		}
+
+		err := dbC.UpdateOccasion(c, db.UpdateOccasionParams{
+			Name: u.Name,
+			ID:   occasionId,
+		})
+
+		if err != nil {
+			return err
+		}
+
+		return c.JSON(OccasionResponse{Name: u.Name, Id: occasionId})
+	})
+
 	userApi.Post("/me/occasions/:occasionId/gifts/", func(c fiber.Ctx) error {
 		g := new(CreateGift)
 		if err := c.Bind().JSON(g); err != nil {
@@ -206,10 +234,36 @@ func main() {
 
 		res := make([]GiftResponse, len(gifts))
 		for i, g := range gifts {
-			res[i] = GiftResponse{Name: g.Name, URL: g.Url}
+			res[i] = GiftResponse{Name: g.Name, URL: g.Url, Id: g.ID}
 		}
 
 		return c.JSON(res)
+	})
+
+	userApi.Delete("/me/occasions/:occasionId/gifts/:giftId/", func(c fiber.Ctx) error {
+		giftId := fiber.Params[int64](c, "giftId", 0)
+		if giftId <= 0 {
+			return errors.New("invalid giftId")
+		}
+
+		g, err := dbC.GetGiftById(c, giftId)
+		if err != nil {
+			return c.SendStatus(fiber.StatusNotFound)
+		}
+
+		user := jwtware.FromContext(c)
+		claims := user.Claims.(jwt.MapClaims)
+		userId := int64(claims["id"].(float64))
+
+		if g.GiftReceiver.Int64 != userId {
+			return c.SendStatus(fiber.StatusForbidden)
+		}
+
+		if err := dbC.DeleteGift(c, giftId); err != nil {
+			return err
+		}
+
+		return nil
 	})
 
 	userApi.Post("/me/occasions/", func(c fiber.Ctx) error {

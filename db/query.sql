@@ -16,8 +16,8 @@ SELECT * FROM occasions WHERE gift_receiver = ?;
 -- name: GetOccasionById :one
 SELECT * FROM occasions WHERE id = ? AND gift_receiver = ?;
 
--- name: DeleteOccasion :exec
-DELETE FROM occasions WHERE id = ?;
+-- name: UpdateOccasion :exec
+UPDATE occasions SET name = ? WHERE id = ?;
 
 -- name: CreateGift :exec
 INSERT INTO gifts(name, url, occasion) values(?, ?, ?);
@@ -27,3 +27,6 @@ DELETE FROM gifts WHERE id = ?;
 
 -- name: SelectGiftsByOcassionId :many
 SELECT *  FROM gifts AS g JOIN occasions AS o ON g.occasion = o.id WHERE g.occasion = ? AND o.gift_receiver = ?;
+
+-- name: GetGiftById :one
+SELECT *  FROM gifts AS g LEFT JOIN occasions AS o ON g.occasion = o.id WHERE g.id = ?;
