@@ -57,6 +57,11 @@ type CreateGift struct {
 	URL  string `json:"url"`
 }
 
+type UpdateGift struct {
+	Name string `json:"name"`
+	URL  string `json:"url"`
+}
+
 type CreateGiftResponse struct {
 	Id int64 `json:"id"`
 }
@@ -260,6 +265,38 @@ func main() {
 		}
 
 		if err := dbC.DeleteGift(c, giftId); err != nil {
+			return err
+		}
+
+		return nil
+	})
+
+	userApi.Patch("/me/occasions/:occasionId/gifts/:giftId/", func(c fiber.Ctx) error {
+		u := new(UpdateGift)
+		if err := c.Bind().JSON(u); err != nil {
+			return err
+		}
+
+		giftId := fiber.Params[int64](c, "giftId", 0)
+		if giftId <= 0 {
+			return errors.New("invalid giftId")
+		}
+
+		g, err := dbC.GetGiftById(c, giftId)
+		if err != nil {
+			return c.SendStatus(fiber.StatusNotFound)
+		}
+
+		if g.GiftReceiver.Int64 != getUserId(c) {
+			return c.SendStatus(fiber.StatusForbidden)
+		}
+
+		err = dbC.UpdateGift(c, db.UpdateGiftParams{
+			ID:   giftId,
+			Name: u.Name,
+			Url:  u.URL,
+		})
+		if err != nil {
 			return err
 		}
 

@@ -37,3 +37,6 @@ SELECT *  FROM gifts AS g
 SELECT *  FROM gifts AS g
 	LEFT JOIN occasions AS o ON g.occasion = o.id
 	WHERE g.id = ?;
+
+-- name: UpdateGift :exec
+UPDATE gifts SET name = ?, url = ? WHERE id = ?;

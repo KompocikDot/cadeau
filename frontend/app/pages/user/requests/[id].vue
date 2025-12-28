@@ -19,9 +19,11 @@ const UButton = resolveComponent("UButton");
 
 const editRequestModalOpen = ref(false);
 const editGiftModalOpen = ref(false);
-const addModalOpen = ref(false);
-const request = ref<UserOccasion>({ name: "", id: 0 });
 const fetchingRequest = ref(true);
+const addModalOpen = ref(false);
+
+const editedGift = reactive<Gift>({ id: 0, name: "", url: "" });
+const request = ref<UserOccasion>({ name: "", id: 0 });
 const gifts = ref<Gift[]>([]);
 
 const removeRequest = async () => {
@@ -70,6 +72,10 @@ function getRowItems(row: Row<Gift>) {
     {
       label: "Edit gift details",
       onSelect() {
+        editedGift.id = row.original.id;
+        editedGift.name = row.original.name;
+        editedGift.url = row.original.url;
+
         editGiftModalOpen.value = true;
       },
     },
@@ -198,5 +204,10 @@ onMounted(() => fetchRequest());
     <USkeleton v-if="fetchingRequest" class="h-96" />
     <UTable :data="gifts" :columns="columns" class="flex-1" />
   </div>
-  <EditGiftModal v-model:open="editGiftModalOpen" />
+  <EditGiftModal
+    v-model:open="editGiftModalOpen"
+    v-model:gifts="gifts"
+    :editedGift="editedGift"
+    :key="editedGift"
+  />
 </template>

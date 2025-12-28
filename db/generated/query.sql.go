@@ -220,6 +220,21 @@ func (q *Queries) SelectGiftsByOcassionId(ctx context.Context, arg SelectGiftsBy
 	return items, nil
 }
 
+const updateGift = `-- name: UpdateGift :exec
+UPDATE gifts SET name = ?, url = ? WHERE id = ?
+`
+
+type UpdateGiftParams struct {
+	Name string
+	Url  string
+	ID   int64
+}
+
+func (q *Queries) UpdateGift(ctx context.Context, arg UpdateGiftParams) error {
+	_, err := q.db.ExecContext(ctx, updateGift, arg.Name, arg.Url, arg.ID)
+	return err
+}
+
 const updateOccasion = `-- name: UpdateOccasion :exec
 UPDATE occasions SET name = ? WHERE id = ?
 `
