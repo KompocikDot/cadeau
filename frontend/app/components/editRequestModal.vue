@@ -8,7 +8,7 @@ const route = useRoute();
 const toast = useToast();
 
 const open = defineModel<boolean>("open", { required: true });
-const request = defineModel<UserOccasion | {}>("request", { required: true });
+const request = defineModel<UserOccasion>("request", { required: true });
 
 const schema = z.object({
   name: z.string("Invalid name").min(2, "Must be at least 2 characters long"),
@@ -17,7 +17,7 @@ const schema = z.object({
 type Schema = z.output<typeof schema>;
 
 const state = reactive<Partial<Schema>>({
-  name: undefined,
+  name: "",
 });
 
 async function editOccasion(event: FormSubmitEvent<Schema>) {
@@ -30,7 +30,7 @@ async function editOccasion(event: FormSubmitEvent<Schema>) {
       },
     );
 
-    request.value = { name: event.data.name, id: route.params.id };
+    request.value = { name: event.data.name, id: request.value.id };
     open.value = false;
 
     toast.add({
@@ -42,6 +42,12 @@ async function editOccasion(event: FormSubmitEvent<Schema>) {
     console.log(e as FetchError);
   }
 }
+
+watch(open, (isOpen) => {
+  if (isOpen) {
+    state.name = request.value.name;
+  }
+});
 </script>
 
 <template>

@@ -41,6 +41,13 @@ const addGift = async (event: FormSubmitEvent<Schema>) => {
     console.log((e as FetchError).data);
   }
 };
+
+watch(open, (isOpen) => {
+  if (!isOpen) {
+    state.name = "";
+    state.url = "";
+  }
+});
 </script>
 
 <template>

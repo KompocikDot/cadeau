@@ -208,6 +208,5 @@ onMounted(() => fetchRequest());
     v-model:open="editGiftModalOpen"
     v-model:gifts="gifts"
     :editedGift="editedGift"
-    :key="editedGift"
   />
 </template>

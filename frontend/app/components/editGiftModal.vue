@@ -33,13 +33,13 @@ const state = reactive<Partial<Schema>>({
 
 const updateGift = async (event: FormSubmitEvent<Schema>) => {
   try {
-    await $api<{ id: number }>(
+    await $api(
       `http://localhost:8000/api/user/me/occasions/${route.params.id}/gifts/${props.editedGift.id}/`,
       { method: "PATCH", body: event.data },
     );
 
     gifts.value = gifts.value.map((gift) =>
-      gift.id === updatedId ? { ...gift, ...event.data } : gift,
+      gift.id === props.editedGift.id ? { ...gift, ...event.data } : gift,
     );
 
     toast.add({
