@@ -4,6 +4,7 @@ import type { FormSubmitEvent } from "@nuxt/ui";
 import type { TableColumn } from "@nuxt/ui";
 import { h, resolveComponent } from "#imports";
 import type { Row } from "@tanstack/vue-table";
+import type { FetchError } from "ofetch";
 
 definePageMeta({
   layout: "dashboard",
@@ -24,6 +25,23 @@ const addModalOpen = ref(false);
 const request = ref<UserOccasion | {}>({});
 const fetchingRequest = ref(true);
 const gifts = ref([]);
+
+const removeRequest = async () => {
+  try {
+    await $api(
+      `http://localhost:8000/api/user/me/occasions/${route.params.id}/`,
+      { method: "DELETE" },
+    );
+    toast.add({
+      title: "Request successfully removed",
+      color: "success",
+      icon: "i-lucide-circle-check",
+    });
+    navigateTo("/user/requests");
+  } catch (e) {
+    console.log((e as FetchError).data);
+  }
+};
 
 const removeGift = async (giftId: number) => {
   try {
@@ -49,10 +67,11 @@ function getRowItems(row: Row<Payment>) {
       type: "label",
       label: "Actions",
     },
+    { type: "separator" },
     {
       label: "Edit gift details",
       onSelect() {
-        editModalOpen.value = true;
+        editModalOpen.open = true;
       },
     },
     {
@@ -79,7 +98,7 @@ const columns: TableColumn<any>[] = [
       return h(
         ULink,
         { to: url, class: "hover:text-primary click:text-primary" },
-        ["redirect"],
+        [new URL(url).host],
       );
     },
   },
@@ -199,12 +218,41 @@ onMounted(() => fetchRequest());
           title="Edit request"
           v-model:open="editRequestModalOpen"
         >
-          <UButton label="Edit request" />
-
           <template #body>
             <RequestForm @submit="editOccasion" />
           </template>
         </UModal>
+        <UDropdownMenu
+          :content="{ align: 'end' }"
+          aria-label="Actions dropdown"
+          :items="[
+            {
+              type: 'label',
+              label: 'Actions',
+            },
+            { type: 'separator' },
+            {
+              label: 'Edit request details',
+              onSelect() {
+                editRequestModalOpen = true;
+              },
+            },
+            {
+              label: 'Delete request',
+              onSelect() {
+                removeRequest();
+              },
+            },
+          ]"
+        >
+          <UButton
+            aria-label="Actions dropdown"
+            icon="i-lucide-ellipsis-vertical"
+            color="neutral"
+            variant="ghost"
+            class="ml-auto"
+          />
+        </UDropdownMenu>
       </div>
     </div>
     <USkeleton v-if="fetchingRequest" class="h-96" />
@@ -212,7 +260,7 @@ onMounted(() => fetchRequest());
   </div>
   <UModal
     :dismissible="false"
-    title="Edit request"
+    title="Edit gift"
     v-model:open="editModalOpen.open"
   >
     <template #body>
