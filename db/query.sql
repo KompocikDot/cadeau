@@ -14,10 +14,13 @@ INSERT INTO occasions(name, gift_receiver) values(?, ?);
 SELECT * FROM occasions WHERE gift_receiver = ?;
 
 -- name: GetOccasionById :one
-SELECT * FROM occasions WHERE id = ? AND gift_receiver = ?;
+SELECT * FROM occasions WHERE id = ?;
 
 -- name: UpdateOccasion :exec
 UPDATE occasions SET name = ? WHERE id = ?;
+
+-- name: DeleteOccasion :exec
+DELETE FROM occasions WHERE id = ?;
 
 -- name: CreateGift :exec
 INSERT INTO gifts(name, url, occasion) values(?, ?, ?);

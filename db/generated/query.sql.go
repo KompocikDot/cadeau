@@ -65,6 +65,15 @@ func (q *Queries) DeleteGift(ctx context.Context, id int64) error {
 	return err
 }
 
+const deleteOccasion = `-- name: DeleteOccasion :exec
+DELETE FROM occasions WHERE id = ?
+`
+
+func (q *Queries) DeleteOccasion(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, deleteOccasion, id)
+	return err
+}
+
 const getGiftById = `-- name: GetGiftById :one
 SELECT g.id, g.name, url, occasion, o.id, o.name, gift_receiver  FROM gifts AS g LEFT JOIN occasions AS o ON g.occasion = o.id WHERE g.id = ?
 `
@@ -95,16 +104,11 @@ func (q *Queries) GetGiftById(ctx context.Context, id int64) (GetGiftByIdRow, er
 }
 
 const getOccasionById = `-- name: GetOccasionById :one
-SELECT id, name, gift_receiver FROM occasions WHERE id = ? AND gift_receiver = ?
+SELECT id, name, gift_receiver FROM occasions WHERE id = ?
 `
 
-type GetOccasionByIdParams struct {
-	ID           int64
-	GiftReceiver int64
-}
-
-func (q *Queries) GetOccasionById(ctx context.Context, arg GetOccasionByIdParams) (Occasion, error) {
-	row := q.db.QueryRowContext(ctx, getOccasionById, arg.ID, arg.GiftReceiver)
+func (q *Queries) GetOccasionById(ctx context.Context, id int64) (Occasion, error) {
+	row := q.db.QueryRowContext(ctx, getOccasionById, id)
 	var i Occasion
 	err := row.Scan(&i.ID, &i.Name, &i.GiftReceiver)
 	return i, err

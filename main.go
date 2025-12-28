@@ -63,6 +63,12 @@ type GiftResponse struct {
 	Id   int64  `json:"id"`
 }
 
+func getUserId(c fiber.Ctx) int64 {
+	user := jwtware.FromContext(c)
+	claims := user.Claims.(jwt.MapClaims)
+	return int64(claims["id"].(float64))
+}
+
 func main() {
 	app := fiber.New(fiber.Config{
 		CaseSensitive: true,
@@ -112,11 +118,7 @@ func main() {
 	})
 
 	userApi.Get("/me/occasions/", func(c fiber.Ctx) error {
-		user := jwtware.FromContext(c)
-		claims := user.Claims.(jwt.MapClaims)
-		userId := int64(claims["id"].(float64))
-
-		occasions, err := dbC.GetUserOccasionsByUserId(c, userId)
+		occasions, err := dbC.GetUserOccasionsByUserId(c, getUserId(c))
 		if err != nil {
 			return err
 		}
@@ -133,21 +135,23 @@ func main() {
 	})
 
 	userApi.Get("/me/occasions/:occasionId/", func(c fiber.Ctx) error {
-		user := jwtware.FromContext(c)
-		claims := user.Claims.(jwt.MapClaims)
-		userId := int64(claims["id"].(float64))
 
 		occasionId := fiber.Params[int64](c, "occasionId", 0)
 		if occasionId <= 0 {
 			return errors.New("invalid occasionId")
 		}
 
-		occasion, err := dbC.GetOccasionById(c, db.GetOccasionByIdParams{
-			ID:           occasionId,
-			GiftReceiver: userId,
-		})
+		occasion, err := dbC.GetOccasionById(c, occasionId)
 		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return c.SendStatus(fiber.StatusNotFound)
+			}
+
 			return err
+		}
+
+		if occasion.GiftReceiver != getUserId(c) {
+			return c.SendStatus(fiber.StatusForbidden)
 		}
 
 		return c.JSON(OccasionResponse{Name: occasion.Name, Id: occasion.ID})
@@ -187,17 +191,17 @@ func main() {
 			return errors.New("invalid occasionId")
 		}
 
-		user := jwtware.FromContext(c)
-		claims := user.Claims.(jwt.MapClaims)
-		userId := int64(claims["id"].(float64))
-
-		_, err := dbC.GetOccasionById(c, db.GetOccasionByIdParams{ID: occasionId, GiftReceiver: userId})
+		o, err := dbC.GetOccasionById(c, occasionId)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
-				return c.SendStatus(fiber.StatusForbidden)
+				return c.SendStatus(fiber.StatusNotFound)
 			}
 
 			return err
+		}
+
+		if o.GiftReceiver != getUserId(c) {
+			return c.SendStatus(fiber.StatusForbidden)
 		}
 
 		err = dbC.CreateGift(c, db.CreateGiftParams{
@@ -219,13 +223,9 @@ func main() {
 			return errors.New("invalid occasionId")
 		}
 
-		user := jwtware.FromContext(c)
-		claims := user.Claims.(jwt.MapClaims)
-		userId := int64(claims["id"].(float64))
-
 		gifts, err := dbC.SelectGiftsByOcassionId(c, db.SelectGiftsByOcassionIdParams{
 			Occasion:     occasionId,
-			GiftReceiver: userId,
+			GiftReceiver: getUserId(c),
 		})
 
 		if err != nil {
@@ -251,11 +251,7 @@ func main() {
 			return c.SendStatus(fiber.StatusNotFound)
 		}
 
-		user := jwtware.FromContext(c)
-		claims := user.Claims.(jwt.MapClaims)
-		userId := int64(claims["id"].(float64))
-
-		if g.GiftReceiver.Int64 != userId {
+		if g.GiftReceiver.Int64 != getUserId(c) {
 			return c.SendStatus(fiber.StatusForbidden)
 		}
 
@@ -272,19 +268,42 @@ func main() {
 			return err
 		}
 
-		user := jwtware.FromContext(c)
-		claims := user.Claims.(jwt.MapClaims)
-		userId := int64(claims["id"].(float64))
-
 		newId, err := dbC.CreateOccasion(c, db.CreateOccasionParams{
 			Name:         p.Name,
-			GiftReceiver: userId,
+			GiftReceiver: getUserId(c),
 		})
 		if err != nil {
 			return err
 		}
 
 		return c.JSON(CreateOccasionResponse{Id: newId})
+	})
+
+	userApi.Delete("/me/occasions/:occasionId/", func(c fiber.Ctx) error {
+		occasionId := fiber.Params[int64](c, "occasionId", 0)
+		if occasionId <= 0 {
+			return errors.New("invalid occasionId")
+		}
+
+		o, err := dbC.GetOccasionById(c, occasionId)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				return c.SendStatus(fiber.StatusNotFound)
+			}
+
+			return err
+		}
+
+		if o.GiftReceiver != getUserId(c) {
+			return c.SendStatus(fiber.StatusForbidden)
+		}
+
+		err = dbC.DeleteOccasion(c, occasionId)
+		if err != nil {
+			return err
+		}
+
+		return nil
 	})
 
 	auth := api.Group("/auth")
