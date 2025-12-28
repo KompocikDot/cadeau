@@ -57,6 +57,10 @@ type CreateGift struct {
 	URL  string `json:"url"`
 }
 
+type CreateGiftResponse struct {
+	Id int64 `json:"id"`
+}
+
 type GiftResponse struct {
 	Name string `json:"name"`
 	URL  string `json:"url"`
@@ -204,7 +208,7 @@ func main() {
 			return c.SendStatus(fiber.StatusForbidden)
 		}
 
-		err = dbC.CreateGift(c, db.CreateGiftParams{
+		newId, err := dbC.CreateGift(c, db.CreateGiftParams{
 			Name:     g.Name,
 			Url:      g.URL,
 			Occasion: occasionId,
@@ -214,7 +218,7 @@ func main() {
 			return err
 		}
 
-		return nil
+		return c.JSON(CreateGiftResponse{Id: newId})
 	})
 
 	userApi.Get("/me/occasions/:occasionId/gifts/", func(c fiber.Ctx) error {

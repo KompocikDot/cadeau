@@ -22,14 +22,18 @@ UPDATE occasions SET name = ? WHERE id = ?;
 -- name: DeleteOccasion :exec
 DELETE FROM occasions WHERE id = ?;
 
--- name: CreateGift :exec
+-- name: CreateGift :execlastid
 INSERT INTO gifts(name, url, occasion) values(?, ?, ?);
 
 -- name: DeleteGift :exec
 DELETE FROM gifts WHERE id = ?;
 
 -- name: SelectGiftsByOcassionId :many
-SELECT *  FROM gifts AS g JOIN occasions AS o ON g.occasion = o.id WHERE g.occasion = ? AND o.gift_receiver = ?;
+SELECT *  FROM gifts AS g
+	JOIN occasions AS o ON g.occasion = o.id
+	WHERE g.occasion = ? AND o.gift_receiver = ?;
 
 -- name: GetGiftById :one
-SELECT *  FROM gifts AS g LEFT JOIN occasions AS o ON g.occasion = o.id WHERE g.id = ?;
+SELECT *  FROM gifts AS g
+	LEFT JOIN occasions AS o ON g.occasion = o.id
+	WHERE g.id = ?;

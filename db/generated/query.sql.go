@@ -10,7 +10,7 @@ import (
 	"database/sql"
 )
 
-const createGift = `-- name: CreateGift :exec
+const createGift = `-- name: CreateGift :execlastid
 INSERT INTO gifts(name, url, occasion) values(?, ?, ?)
 `
 
@@ -20,9 +20,12 @@ type CreateGiftParams struct {
 	Occasion int64
 }
 
-func (q *Queries) CreateGift(ctx context.Context, arg CreateGiftParams) error {
-	_, err := q.db.ExecContext(ctx, createGift, arg.Name, arg.Url, arg.Occasion)
-	return err
+func (q *Queries) CreateGift(ctx context.Context, arg CreateGiftParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, createGift, arg.Name, arg.Url, arg.Occasion)
+	if err != nil {
+		return 0, err
+	}
+	return result.LastInsertId()
 }
 
 const createOccasion = `-- name: CreateOccasion :execlastid
@@ -75,7 +78,9 @@ func (q *Queries) DeleteOccasion(ctx context.Context, id int64) error {
 }
 
 const getGiftById = `-- name: GetGiftById :one
-SELECT g.id, g.name, url, occasion, o.id, o.name, gift_receiver  FROM gifts AS g LEFT JOIN occasions AS o ON g.occasion = o.id WHERE g.id = ?
+SELECT g.id, g.name, url, occasion, o.id, o.name, gift_receiver  FROM gifts AS g
+	LEFT JOIN occasions AS o ON g.occasion = o.id
+	WHERE g.id = ?
 `
 
 type GetGiftByIdRow struct {
@@ -164,7 +169,9 @@ func (q *Queries) GetUserOccasionsByUserId(ctx context.Context, giftReceiver int
 }
 
 const selectGiftsByOcassionId = `-- name: SelectGiftsByOcassionId :many
-SELECT g.id, g.name, url, occasion, o.id, o.name, gift_receiver  FROM gifts AS g JOIN occasions AS o ON g.occasion = o.id WHERE g.occasion = ? AND o.gift_receiver = ?
+SELECT g.id, g.name, url, occasion, o.id, o.name, gift_receiver  FROM gifts AS g
+	JOIN occasions AS o ON g.occasion = o.id
+	WHERE g.occasion = ? AND o.gift_receiver = ?
 `
 
 type SelectGiftsByOcassionIdParams struct {

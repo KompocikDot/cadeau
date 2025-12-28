@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { UserOccasion } from "~/types/responses";
+import type { UserOccasion, Gift } from "~/types/responses";
 import type { FormSubmitEvent } from "@nuxt/ui";
 import type { TableColumn } from "@nuxt/ui";
 import { h, resolveComponent } from "#imports";
@@ -18,13 +18,11 @@ const ULink = resolveComponent("ULink");
 const UButton = resolveComponent("UButton");
 
 const editRequestModalOpen = ref(false);
-const editModalOpen = reactive({
-  open: false,
-});
+const editGiftModalOpen = ref(false);
 const addModalOpen = ref(false);
-const request = ref<UserOccasion | {}>({});
+const request = ref<UserOccasion>({ name: "", id: 0 });
 const fetchingRequest = ref(true);
-const gifts = ref([]);
+const gifts = ref<Gift[]>([]);
 
 const removeRequest = async () => {
   try {
@@ -32,6 +30,7 @@ const removeRequest = async () => {
       `http://localhost:8000/api/user/me/occasions/${route.params.id}/`,
       { method: "DELETE" },
     );
+
     toast.add({
       title: "Request successfully removed",
       color: "success",
@@ -56,12 +55,12 @@ const removeGift = async (giftId: number) => {
       color: "success",
       icon: "i-lucide-circle-check",
     });
-  } catch {
+  } catch (e) {
     console.log((e as FetchError).data);
   }
 };
 
-function getRowItems(row: Row<Payment>) {
+function getRowItems(row: Row<Gift>) {
   return [
     {
       type: "label",
@@ -71,27 +70,26 @@ function getRowItems(row: Row<Payment>) {
     {
       label: "Edit gift details",
       onSelect() {
-        editModalOpen.open = true;
+        editGiftModalOpen.value = true;
       },
     },
     {
       label: "Delete gift",
       onSelect() {
-        console.log(row.original);
         removeGift(row.original.id);
       },
     },
   ];
 }
 
-const columns: TableColumn<any>[] = [
+const columns: TableColumn<Gift>[] = [
   { accessorKey: "name", header: "Name" },
   {
     accessorKey: "url",
     header: "URL",
     cell: ({ row }) => {
-      const url = row.getValue("url");
-      if (url === "") {
+      const url = row.original.url;
+      if (!url) {
         return "-";
       }
 
@@ -137,7 +135,7 @@ const fetchRequest = async () => {
       $api<UserOccasion>(
         `http://localhost:8000/api/user/me/occasions/${route.params.id}`,
       ),
-      $api<UserOccasion>(
+      $api<Gift[]>(
         `http://localhost:8000/api/user/me/occasions/${route.params.id}/gifts/`,
       ),
     ]);
@@ -151,49 +149,6 @@ const fetchRequest = async () => {
   }
 };
 
-async function editOccasion(event: FormSubmitEvent<any>) {
-  try {
-    const data = await $api(
-      `http://localhost:8000/api/user/me/occasions/${route.params.id}/`,
-      {
-        method: "PATCH",
-        body: event.data,
-      },
-    );
-
-    request.value = { name: data.name, id: data.id };
-    editModalOpen.value = false;
-
-    toast.add({
-      title: "Success",
-      description: "The request have been edited",
-      color: "success",
-    });
-  } catch (e) {
-    console.log((e as FetchError).data);
-  }
-}
-
-const addGift = async (event: FormSubmitEvent<any>) => {
-  try {
-    await $api(
-      `http://localhost:8000/api/user/me/occasions/${route.params.id}/gifts/`,
-      { method: "POST", body: event.data },
-    );
-
-    gifts.value.push(event.data);
-    addModalOpen.value = false;
-
-    toast.add({
-      title: "Success",
-      description: "The gift have been added",
-      color: "success",
-    });
-  } catch {
-    console.log((e as FetchError).data);
-  }
-};
-
 onMounted(() => fetchRequest());
 </script>
 
@@ -202,26 +157,11 @@ onMounted(() => fetchRequest());
     <div class="flex justify-between py-5">
       <div class="text-3xl">Request: {{ request?.name }}</div>
       <div class="flex gap-x-2">
-        <UModal
-          :dismissible="false"
-          title="Add gift"
-          v-model:open="addModalOpen"
-        >
-          <UButton label="Add gift" variant="outline" />
-
-          <template #body>
-            <RequestForm @submit="addGift" />
-          </template>
-        </UModal>
-        <UModal
-          :dismissible="false"
-          title="Edit request"
+        <AddGiftModal v-model:open="addModalOpen" v-model:gifts="gifts" />
+        <EditRequestModal
           v-model:open="editRequestModalOpen"
-        >
-          <template #body>
-            <RequestForm @submit="editOccasion" />
-          </template>
-        </UModal>
+          v-model:request="request"
+        />
         <UDropdownMenu
           :content="{ align: 'end' }"
           aria-label="Actions dropdown"
@@ -258,13 +198,5 @@ onMounted(() => fetchRequest());
     <USkeleton v-if="fetchingRequest" class="h-96" />
     <UTable :data="gifts" :columns="columns" class="flex-1" />
   </div>
-  <UModal
-    :dismissible="false"
-    title="Edit gift"
-    v-model:open="editModalOpen.open"
-  >
-    <template #body>
-      <RequestForm @submit="editGift" />
-    </template>
-  </UModal>
+  <EditGiftModal v-model:open="editGiftModalOpen" />
 </template>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import * as z from "zod";
 import type { UserOccasion } from "~/types/responses";
 import type { FetchError } from "ofetch";
 import type { FormSubmitEvent } from "@nuxt/ui";
@@ -8,6 +9,15 @@ definePageMeta({
 });
 
 const toast = useToast();
+const schema = z.object({
+  name: z.string("Invalid name").min(2, "Must be at least 2 characters long"),
+});
+
+type Schema = z.output<typeof schema>;
+
+const state = reactive<Partial<Schema>>({
+  name: undefined,
+});
 
 const requests = ref<UserOccasion[]>([]);
 const modalOpen = ref(false);
@@ -41,9 +51,9 @@ async function createOccasion(event: FormSubmitEvent<Schema>) {
     modalOpen.value = false;
 
     toast.add({
-      title: "Success",
-      description: "The request have been created",
+      title: "The request have been created",
       color: "success",
+      icon: "i-lucide-circle-check",
     });
   } catch (e) {
     console.log((e as FetchError).data);
@@ -65,7 +75,18 @@ onMounted(() => fetchRequests());
         <UButton label="Create new" />
 
         <template #body>
-          <RequestForm @submit="createOccasion" />
+          <UForm
+            :schema="schema"
+            :state="state"
+            class="space-y-4"
+            @submit="createOccasion"
+          >
+            <UFormField label="Name" name="name">
+              <UInput v-model="state.name" />
+            </UFormField>
+
+            <UButton type="submit">Submit</UButton>
+          </UForm>
         </template>
       </UModal>
     </div>
