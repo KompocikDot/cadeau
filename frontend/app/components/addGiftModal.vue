@@ -62,10 +62,10 @@ watch(open, (isOpen) => {
         @submit="addGift"
       >
         <UFormField label="Name" name="name" required>
-          <UInput v-model="state.name" />
+          <UInput v-model="state.name" class="w-full" />
         </UFormField>
         <UFormField label="URL" name="url">
-          <UInput v-model="state.url" />
+          <UInput v-model="state.url" class="w-full" />
         </UFormField>
 
         <UButton type="submit">Submit</UButton>

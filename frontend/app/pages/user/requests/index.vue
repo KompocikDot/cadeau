@@ -11,23 +11,26 @@ definePageMeta({
 const toast = useToast();
 const schema = z.object({
   name: z.string("Invalid name").min(2, "Must be at least 2 characters long"),
+  guests: z.array(z.number()),
 });
 
 type Schema = z.output<typeof schema>;
 
 const state = reactive<Partial<Schema>>({
   name: undefined,
+  guests: [],
 });
 
 const requests = ref<UserOccasion[]>([]);
 const modalOpen = ref(false);
 const fetchingRequests = ref(true);
+const fetchingGuests = ref([]);
+const guests = ref([]);
 
 const fetchRequests = async () => {
   try {
     const data = await $api<UserOccasion[]>(
       "http://localhost:8000/api/user/me/occasions/",
-      { credentials: "include" },
     );
 
     requests.value = data;
@@ -60,6 +63,14 @@ async function createOccasion(event: FormSubmitEvent<Schema>) {
   }
 }
 
+const loadUsersList = async () => {
+  try {
+    fetchingGuests.value = true;
+    guests.value = await $api(`http://localhost:8000/api/users/`);
+    fetchingGuests.value = false;
+  } catch (e) {}
+};
+
 onMounted(() => fetchRequests());
 </script>
 
@@ -72,7 +83,7 @@ onMounted(() => fetchRequests());
         title="Create new request"
         v-model:open="modalOpen"
       >
-        <UButton label="Create new" />
+        <UButton label="Create new" @click="loadUsersList" />
 
         <template #body>
           <UForm
@@ -82,7 +93,18 @@ onMounted(() => fetchRequests());
             @submit="createOccasion"
           >
             <UFormField label="Name" name="name">
-              <UInput v-model="state.name" />
+              <UInput v-model="state.name" class="w-full" />
+            </UFormField>
+
+            <UFormField label="Guests" name="guests">
+              <USelectMenu
+                :items="guests"
+                v-model="state.guests"
+                multiple
+                valueKey="id"
+                labelKey="username"
+                class="w-full"
+              />
             </UFormField>
 
             <UButton type="submit">Submit</UButton>

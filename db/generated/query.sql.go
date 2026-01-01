@@ -8,7 +8,22 @@ package db
 import (
 	"context"
 	"database/sql"
+	"strings"
 )
+
+const assignUserToOccasion = `-- name: AssignUserToOccasion :exec
+INSERT INTO user_occasions(occasion_id, user_id) values(?, ?)
+`
+
+type AssignUserToOccasionParams struct {
+	OccasionID int64
+	UserID     int64
+}
+
+func (q *Queries) AssignUserToOccasion(ctx context.Context, arg AssignUserToOccasionParams) error {
+	_, err := q.db.ExecContext(ctx, assignUserToOccasion, arg.OccasionID, arg.UserID)
+	return err
+}
 
 const createGift = `-- name: CreateGift :execlastid
 INSERT INTO gifts(name, url, occasion) values(?, ?, ?)
@@ -78,7 +93,7 @@ func (q *Queries) DeleteOccasion(ctx context.Context, id int64) error {
 }
 
 const getGiftById = `-- name: GetGiftById :one
-SELECT g.id, g.name, url, occasion, o.id, o.name, gift_receiver  FROM gifts AS g
+SELECT g.id, g.name, g.url, g.occasion, o.gift_receiver FROM gifts AS g
 	LEFT JOIN occasions AS o ON g.occasion = o.id
 	WHERE g.id = ?
 `
@@ -88,8 +103,6 @@ type GetGiftByIdRow struct {
 	Name         string
 	Url          string
 	Occasion     int64
-	ID_2         sql.NullInt64
-	Name_2       sql.NullString
 	GiftReceiver sql.NullInt64
 }
 
@@ -101,8 +114,6 @@ func (q *Queries) GetGiftById(ctx context.Context, id int64) (GetGiftByIdRow, er
 		&i.Name,
 		&i.Url,
 		&i.Occasion,
-		&i.ID_2,
-		&i.Name_2,
 		&i.GiftReceiver,
 	)
 	return i, err
@@ -117,6 +128,38 @@ func (q *Queries) GetOccasionById(ctx context.Context, id int64) (Occasion, erro
 	var i Occasion
 	err := row.Scan(&i.ID, &i.Name, &i.GiftReceiver)
 	return i, err
+}
+
+const getOccasionGuests = `-- name: GetOccasionGuests :many
+SELECT id, username FROM users AS u JOIN user_occasions AS uo on u.id = uo.user_id WHERE uo.occasion_id = ?
+`
+
+type GetOccasionGuestsRow struct {
+	ID       int64
+	Username string
+}
+
+func (q *Queries) GetOccasionGuests(ctx context.Context, occasionID int64) ([]GetOccasionGuestsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getOccasionGuests, occasionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetOccasionGuestsRow
+	for rows.Next() {
+		var i GetOccasionGuestsRow
+		if err := rows.Scan(&i.ID, &i.Username); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getUserById = `-- name: GetUserById :one
@@ -168,8 +211,59 @@ func (q *Queries) GetUserOccasionsByUserId(ctx context.Context, giftReceiver int
 	return items, nil
 }
 
+const getUsersList = `-- name: GetUsersList :many
+SELECT id, username FROM users WHERE id != ?
+`
+
+type GetUsersListRow struct {
+	ID       int64
+	Username string
+}
+
+func (q *Queries) GetUsersList(ctx context.Context, id int64) ([]GetUsersListRow, error) {
+	rows, err := q.db.QueryContext(ctx, getUsersList, id)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetUsersListRow
+	for rows.Next() {
+		var i GetUsersListRow
+		if err := rows.Scan(&i.ID, &i.Username); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const removeUsersFromOccasion = `-- name: RemoveUsersFromOccasion :exec
+DELETE FROM gifts WHERE id IN /*SLICE:ids*/?
+`
+
+func (q *Queries) RemoveUsersFromOccasion(ctx context.Context, ids []int64) error {
+	query := removeUsersFromOccasion
+	var queryParams []interface{}
+	if len(ids) > 0 {
+		for _, v := range ids {
+			queryParams = append(queryParams, v)
+		}
+		query = strings.Replace(query, "/*SLICE:ids*/?", strings.Repeat(",?", len(ids))[1:], 1)
+	} else {
+		query = strings.Replace(query, "/*SLICE:ids*/?", "NULL", 1)
+	}
+	_, err := q.db.ExecContext(ctx, query, queryParams...)
+	return err
+}
+
 const selectGiftsByOcassionId = `-- name: SelectGiftsByOcassionId :many
-SELECT g.id, g.name, url, occasion, o.id, o.name, gift_receiver  FROM gifts AS g
+SELECT g.id, g.name, g.url, g.occasion FROM gifts AS g
 	JOIN occasions AS o ON g.occasion = o.id
 	WHERE g.occasion = ? AND o.gift_receiver = ?
 `
@@ -179,33 +273,20 @@ type SelectGiftsByOcassionIdParams struct {
 	GiftReceiver int64
 }
 
-type SelectGiftsByOcassionIdRow struct {
-	ID           int64
-	Name         string
-	Url          string
-	Occasion     int64
-	ID_2         int64
-	Name_2       string
-	GiftReceiver int64
-}
-
-func (q *Queries) SelectGiftsByOcassionId(ctx context.Context, arg SelectGiftsByOcassionIdParams) ([]SelectGiftsByOcassionIdRow, error) {
+func (q *Queries) SelectGiftsByOcassionId(ctx context.Context, arg SelectGiftsByOcassionIdParams) ([]Gift, error) {
 	rows, err := q.db.QueryContext(ctx, selectGiftsByOcassionId, arg.Occasion, arg.GiftReceiver)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []SelectGiftsByOcassionIdRow
+	var items []Gift
 	for rows.Next() {
-		var i SelectGiftsByOcassionIdRow
+		var i Gift
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
 			&i.Url,
 			&i.Occasion,
-			&i.ID_2,
-			&i.Name_2,
-			&i.GiftReceiver,
 		); err != nil {
 			return nil, err
 		}

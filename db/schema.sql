@@ -15,8 +15,13 @@ CREATE TABLE gifts(
 	url VARCHAR NOT NULL,
 	occasion INTEGER NOT NULL REFERENCES occasions(id)
 );
+CREATE TABLE user_occasions(
+	occasion_id INTEGER NOT NULL REFERENCES occasions(id),
+	user_id INTEGER NOT NULL REFERENCES users(id)
+);
 -- Dbmate schema migrations
 INSERT INTO "schema_migrations" (version) VALUES
   ('20251224124538'),
   ('20251224145855'),
-  ('20251224211835');
+  ('20251224211835'),
+  ('20251228191927');

@@ -22,3 +22,8 @@ type User struct {
 	Username string
 	Password string
 }
+
+type UserOccasion struct {
+	OccasionID int64
+	UserID     int64
+}

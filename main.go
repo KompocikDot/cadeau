@@ -36,12 +36,14 @@ type UserRegister struct {
 }
 
 type CreateOccasion struct {
-	Name string `json:"name"`
+	Name   string  `json:"name"`
+	Guests []int64 `json:"guests"`
 }
 
 type OccasionResponse struct {
-	Name string `json:"name"`
-	Id   int64  `json:"id"`
+	Name   string          `json:"name"`
+	Id     int64           `json:"id"`
+	Guests []UsersResponse `json:"guests"`
 }
 
 type CreateOccasionResponse struct {
@@ -49,7 +51,8 @@ type CreateOccasionResponse struct {
 }
 
 type UpdateOccasion struct {
-	Name string `json:"name"`
+	Name   string  `json:"name"`
+	Guests []int64 `json:"guests"`
 }
 
 type CreateGift struct {
@@ -70,6 +73,11 @@ type GiftResponse struct {
 	Name string `json:"name"`
 	URL  string `json:"url"`
 	Id   int64  `json:"id"`
+}
+
+type UsersResponse struct {
+	Id       int64  `json:"id"`
+	Username string `json:"username"`
 }
 
 func getUserId(c fiber.Ctx) int64 {
@@ -120,6 +128,22 @@ func main() {
 	})
 
 	api := app.Group("/api")
+
+	usersApi := api.Group("/users").Use(jwtMiddleware)
+	usersApi.Get("/", func(c fiber.Ctx) error {
+		users, err := dbC.GetUsersList(c, getUserId(c))
+		if err != nil {
+			return err
+		}
+
+		res := make([]UsersResponse, len(users))
+		for i, u := range users {
+			res[i] = UsersResponse{Id: u.ID, Username: u.Username}
+		}
+
+		return c.JSON(res)
+	})
+
 	userApi := api.Group("/user").Use(jwtMiddleware)
 
 	userApi.Get("/me/", jwtMiddleware, func(c fiber.Ctx) error {
@@ -144,7 +168,6 @@ func main() {
 	})
 
 	userApi.Get("/me/occasions/:occasionId/", func(c fiber.Ctx) error {
-
 		occasionId := fiber.Params[int64](c, "occasionId", 0)
 		if occasionId <= 0 {
 			return errors.New("invalid occasionId")
@@ -163,7 +186,17 @@ func main() {
 			return c.SendStatus(fiber.StatusForbidden)
 		}
 
-		return c.JSON(OccasionResponse{Name: occasion.Name, Id: occasion.ID})
+		guests, err := dbC.GetOccasionGuests(c, occasionId)
+		if err != nil {
+			return err
+		}
+
+		guestsRes := make([]UsersResponse, len(guests))
+		for i, g := range guests {
+			guestsRes[i] = UsersResponse{Id: g.ID, Username: g.Username}
+		}
+
+		return c.JSON(OccasionResponse{Name: occasion.Name, Id: occasion.ID, Guests: guestsRes})
 	})
 
 	userApi.Patch("/me/occasions/:occasionId/", func(c fiber.Ctx) error {
@@ -309,13 +342,30 @@ func main() {
 			return err
 		}
 
-		newId, err := dbC.CreateOccasion(c, db.CreateOccasionParams{
-			Name:         p.Name,
-			GiftReceiver: getUserId(c),
-		})
+		tx, err := conn.BeginTx(c, nil)
 		if err != nil {
 			return err
 		}
+
+		defer tx.Rollback()
+
+		newId, err := dbC.WithTx(tx).CreateOccasion(c, db.CreateOccasionParams{
+			Name:         p.Name,
+			GiftReceiver: getUserId(c),
+		})
+
+		if err != nil {
+			return err
+		}
+
+		for _, guestId := range p.Guests {
+			err := dbC.WithTx(tx).AssignUserToOccasion(c, db.AssignUserToOccasionParams{OccasionID: newId, UserID: guestId})
+			if err != nil {
+				return err
+			}
+		}
+
+		tx.Commit()
 
 		return c.JSON(CreateOccasionResponse{Id: newId})
 	})

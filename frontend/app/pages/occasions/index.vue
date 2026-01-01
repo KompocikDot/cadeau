@@ -2,6 +2,16 @@
 definePageMeta({
   layout: "dashboard",
 });
+
+const loadInvites = async () => {
+  try {
+    await $api();
+  } catch (e) {}
+};
+
+onMounted(() => {
+  loadInvites();
+});
 </script>
 
-<template>Occasions</template>
+<template></template>
